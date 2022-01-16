@@ -3,3 +3,6 @@ node_modules
 stats.json
 contracts/build
 contracts/.secret
+airdrop
+arbitration
+audit
