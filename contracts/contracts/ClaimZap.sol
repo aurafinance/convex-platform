@@ -3,9 +3,9 @@ pragma solidity 0.6.12;
 
 import "./interfaces/MathUtil.sol";
 import "./interfaces/ILockedCvx.sol";
-import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
-import '@openzeppelin/contracts/token/ERC20/SafeERC20.sol';
-import '@openzeppelin/contracts/math/SafeMath.sol';
+import "@openzeppelin/contracts-0.6/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts-0.6/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts-0.6/math/SafeMath.sol";
 
 
 interface IBasicRewards{

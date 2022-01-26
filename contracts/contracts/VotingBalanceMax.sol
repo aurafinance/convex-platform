@@ -5,7 +5,7 @@ pragma experimental ABIEncoderV2;
 
 import "./interfaces/ILockedCvx.sol";
 import "./interfaces/IVotingEligibility.sol";
-import '@openzeppelin/contracts/math/SafeMath.sol';
+import "@openzeppelin/contracts-0.6/math/SafeMath.sol";
 
 contract VotingBalanceMax{
     using SafeMath for uint256;

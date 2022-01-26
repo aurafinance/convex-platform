@@ -3,8 +3,8 @@ pragma solidity 0.6.12;
 
 import "./interfaces/ILockedCvx.sol";
 import "./interfaces/BoringMath.sol";
-import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
-import '@openzeppelin/contracts/token/ERC20/SafeERC20.sol';
+import "@openzeppelin/contracts-0.6/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts-0.6/token/ERC20/SafeERC20.sol";
 
 
 //Distribute various rewards to locked cvx holders

@@ -2,11 +2,11 @@
 
 pragma solidity 0.6.12;
 
-import '@openzeppelin/contracts/math/SafeMath.sol';
-import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
-import '@openzeppelin/contracts/token/ERC20/SafeERC20.sol';
-import '@openzeppelin/contracts/utils/Context.sol';
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts-0.6/math/SafeMath.sol";
+import "@openzeppelin/contracts-0.6/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts-0.6/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts-0.6/utils/Context.sol";
+import "@openzeppelin/contracts-0.6/access/Ownable.sol";
 import "./interfaces/IRewarder.sol";
 
 

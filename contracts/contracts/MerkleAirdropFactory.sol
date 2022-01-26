@@ -2,7 +2,7 @@
 pragma solidity 0.6.12;
 
 import "./MerkleAirdrop.sol";
-import '@openzeppelin/contracts/utils/Address.sol';
+import "@openzeppelin/contracts-0.6/utils/Address.sol";
 
 contract MerkleAirdropFactory {
     using Address for address;

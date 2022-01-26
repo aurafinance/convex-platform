@@ -2,7 +2,7 @@
 pragma solidity 0.6.12;
 
 import "./interfaces/IBooster.sol";
-import '@openzeppelin/contracts/math/SafeMath.sol';
+import "@openzeppelin/contracts-0.6/math/SafeMath.sol";
 
 /*
 Add a layer to voting to easily apply data packing into vote id, as well as simplify calling functions

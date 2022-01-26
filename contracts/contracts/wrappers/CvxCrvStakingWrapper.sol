@@ -5,12 +5,12 @@ pragma experimental ABIEncoderV2;
 import "../interfaces/IRewardStaking.sol";
 import "../interfaces/IConvexDeposits.sol";
 import "../interfaces/CvxMining.sol";
-import '@openzeppelin/contracts/math/SafeMath.sol';
-import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
-import '@openzeppelin/contracts/token/ERC20/SafeERC20.sol';
-import '@openzeppelin/contracts/token/ERC20/ERC20.sol';
-import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts-0.6/math/SafeMath.sol";
+import "@openzeppelin/contracts-0.6/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts-0.6/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts-0.6/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts-0.6/utils/ReentrancyGuard.sol";
+import "@openzeppelin/contracts-0.6/access/Ownable.sol";
 
 
 //Example of a tokenize a convex staked position.

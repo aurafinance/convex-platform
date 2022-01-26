@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.6.12;
 
-import '@openzeppelin/contracts/utils/Address.sol';
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts-0.6/utils/Address.sol";
+import "@openzeppelin/contracts-0.6/access/Ownable.sol";
 
 contract VotingEligibility is Ownable{
     using Address for address;

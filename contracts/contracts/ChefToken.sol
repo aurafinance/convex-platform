@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.6.12;
 
-import '@openzeppelin/contracts/token/ERC20/ERC20.sol';
+import "@openzeppelin/contracts-0.6/token/ERC20/ERC20.sol";
 
 //Dummy token for master chef plugin
 contract ChefToken is ERC20 {

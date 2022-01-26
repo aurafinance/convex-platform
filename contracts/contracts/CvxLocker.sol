@@ -6,11 +6,11 @@ import "./interfaces/MathUtil.sol";
 import "./interfaces/IStakingProxy.sol";
 import "./interfaces/IRewardStaking.sol";
 import "./interfaces/BoringMath.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "@openzeppelin/contracts/math/Math.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "@openzeppelin/contracts-0.6/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts-0.6/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts-0.6/math/Math.sol";
+import "@openzeppelin/contracts-0.6/access/Ownable.sol";
+import "@openzeppelin/contracts-0.6/utils/ReentrancyGuard.sol";
 
 
 // CVX Locking contract for https://www.convexfinance.com/

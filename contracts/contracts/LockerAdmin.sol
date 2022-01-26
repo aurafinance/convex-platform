@@ -2,7 +2,7 @@
 pragma solidity 0.6.12;
 
 import "./interfaces/ILockedCvx.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts-0.6/token/ERC20/IERC20.sol";
 
 /*
 Admin proxy for locker contract to fix require checks and seal off staking proxy changes
