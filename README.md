@@ -87,3 +87,12 @@ Telegram Announcements: https://t.me/ConvexEth
 Telegram Chat: https://t.me/convexEthChat
 
 Discord: https://discord.gg/uCE6Rwta9b
+
+Notes
+-----
+Run local fork pinned to block `12450999`
+
+```
+ganache-cli --fork https://eth-mainnet.alchemyapi.io/v2/<KEY>@12450999 \
+  -u 0x947B7742C403f20e5FaCcDAc5E092C943E7D0277
+```

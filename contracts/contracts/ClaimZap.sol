@@ -47,12 +47,12 @@ contract ClaimZap{
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
-    address public constant crv = address(0xD533a949740bb3306d119CC777fa900bA034cd52);
-    address public constant cvx = address(0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B);
-    address public constant cvxCrv = address(0x62B9c7356A2Dc64a1969e19C23e4f579F9810Aa7);
-    address public constant crvDeposit = address(0x8014595F2AB54cD7c604B00E9fb932176fDc86Ae);
-    address public constant cvxCrvRewards = address(0x3Fe65692bfCD0e6CF84cB1E7d24108E434A7587e);
-    address public constant cvxRewards = address(0xCF50b810E57Ac33B91dCF525C6ddd9881B139332);
+    address public crv = address(0xD533a949740bb3306d119CC777fa900bA034cd52);
+    address public cvx;
+    address public cvxCrv;
+    address public crvDeposit;
+    address public cvxCrvRewards; 
+    address public cvxRewards;
 
     address public constant exchange = address(0x9D0464996170c6B9e75eED71c68B99dDEDf279e8);//curve
 
@@ -70,9 +70,22 @@ contract ClaimZap{
         UseAllWalletFunds, //64
         LockCvx //128
     }
-
-    constructor() public {
+    
+    constructor(
+      address _cvxRewards,
+      address _cvxCrvRewards,
+      address _chef,
+      address _cvx,
+      address _cvxCRV,
+      address _crvDeposit
+    ) public {
         owner = msg.sender;
+
+        cvx = _cvx;
+        cvxCrv = _cvxCRV;
+        crvDeposit = _crvDeposit;
+        cvxCrvRewards = _cvxCrvRewards;
+        cvxRewards = _cvxRewards;
     }
 
     function getName() external pure returns (string memory) {
