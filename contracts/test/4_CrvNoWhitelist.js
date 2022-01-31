@@ -12,7 +12,7 @@ const VirtualBalanceRewardPool = artifacts.require("VirtualBalanceRewardPool");
 const cvxRewardPool = artifacts.require("cvxRewardPool");
 const ConvexToken = artifacts.require("ConvexToken");
 const cvxCrvToken = artifacts.require("cvxCrvToken");
-const StashFactory = artifacts.require("StashFactory");
+const StashFactory = artifacts.require("StashFactoryV2");
 const RewardFactory = artifacts.require("RewardFactory");
 
 
@@ -81,6 +81,11 @@ contract("cvxCrv Rewards", async accounts => {
     await threeCrv.approve(booster.address,0,{from:userA});
     await threeCrv.approve(booster.address,startingThreeCrv,{from:userA});
 
+    const pool0 = await booster.poolInfo(0);
+    const pool0LpToken = await IERC20.at(pool0.lptoken);
+    const pool0LpTokenBalance = await pool0LpToken.balanceOf(userA);
+    await pool0LpToken.approve(booster.address, pool0LpTokenBalance, {from:userA})
+
     await booster.depositAll(0,true,{from:userA});
     await rewardPool.balanceOf(userA).then(a=>console.log("deposited lp: " +a));
     await rewardPool.balanceOf(userA).then(a=>console.log("reward balance: " +a));
@@ -101,11 +106,12 @@ contract("cvxCrv Rewards", async accounts => {
     await crv.approve(crvDeposit.address,startingcrv,{from:userA});
     await crvDeposit.deposit(startingcrv,true,"0x0000000000000000000000000000000000000000",{from:userA});
     console.log("crv deposited");
-    await cvxCrv.balanceOf(userA).then(a=>console.log("cvxCrv on wallet: " +a))
+    let cvxCrvBalance = await cvxCrv.balanceOf(userA);
+    console.log("cvxCrv on wallet: " + cvxCrvBalance);
     //stake cvxCrv
     console.log("stake at " +cvxCrvRewardsContract.address);
     await cvxCrv.approve(cvxCrvRewardsContract.address,0,{from:userA});
-    await cvxCrv.approve(cvxCrvRewardsContract.address,startingcrv,{from:userA});
+    await cvxCrv.approve(cvxCrvRewardsContract.address,cvxCrvBalance,{from:userA});
     console.log("stake approve");
     await cvxCrvRewardsContract.stakeAll({from:userA})
     console.log("staked")
