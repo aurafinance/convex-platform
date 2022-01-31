@@ -7,7 +7,8 @@ var distroList = jsonfile.readFileSync('./distro.json');
 const Booster = artifacts.require("Booster");
 const CurveVoterProxy = artifacts.require("CurveVoterProxy");
 const RewardFactory = artifacts.require("RewardFactory");
-const StashFactory = artifacts.require("StashFactory");
+const StashFactory = artifacts.require("StashFactoryV2");
+const ProxyFactory = artifacts.require("ProxyFactory");
 const TokenFactory = artifacts.require("TokenFactory");
 const ConvexToken = artifacts.require("ConvexToken");
 const cvxCrvToken = artifacts.require("cvxCrvToken");
@@ -21,6 +22,9 @@ const ConvexMasterChef = artifacts.require("ConvexMasterChef");
 const VestedEscrow = artifacts.require("VestedEscrow");
 const MerkleAirdrop = artifacts.require("MerkleAirdrop");
 const MerkleAirdropFactory = artifacts.require("MerkleAirdropFactory");
+const ExtraRewardStashV1 = artifacts.require("ExtraRewardStashV1");
+const ExtraRewardStashV2 = artifacts.require("ExtraRewardStashV2");
+const ExtraRewardStashV3 = artifacts.require("ExtraRewardStashV3");
 
 
 const IUniswapV2Router01 = artifacts.require("IUniswapV2Router01");
@@ -131,14 +135,41 @@ module.exports = function (deployer, network, accounts) {
 		addContract("system","rFactory",rFactory.address);
 	}).then(function() {
 		return deployer.deploy(TokenFactory,booster.address)
-	}).then(function(instance) {
+  }).then(function(instance) {
 		tFactory = instance;
 		addContract("system","tFactory",tFactory.address);
-		return deployer.deploy(StashFactory,booster.address,rFactory.address)
+    return deployer.deploy(ProxyFactory);
+	}).then(function(instance) {
+		proxyFactory = instance;
+		addContract("system","proxyFactory",proxyFactory.address);
+		return deployer.deploy(StashFactory,booster.address,rFactory.address,proxyFactory.address);
 	}).then(function(instance) {
 		sFactory = instance;
 		addContract("system","sFactory",sFactory.address);
-		return deployer.deploy(cvxCrvToken)
+    return deployer.deploy(ExtraRewardStashV1);
+  }).then(function(instance) {
+    // deploy extra stash v1 implementation
+    extraRewardStashV1 = instance;
+		addContract("system","extraRewardStashV1",extraRewardStashV1.address);
+    return deployer.deploy(ExtraRewardStashV2);
+  }).then(function(instance) {
+    // deploy extra stash v2 implementation
+    extraRewardStashV2 = instance;
+		addContract("system","extraRewardStashV2",extraRewardStashV2.address);
+    return deployer.deploy(ExtraRewardStashV3);
+  }).then(function(instance) {
+    // deploy extra stash v3 implementation
+    extraRewardStashV3 = instance;
+		addContract("system","extraRewardStashV2",extraRewardStashV3.address);
+  }).then(function() {
+    // setup instances
+    return sFactory.setImplementation(
+      extraRewardStashV1.address, 
+      extraRewardStashV2.address, 
+      extraRewardStashV3.address
+    );
+  }).then(function() {
+		return deployer.deploy(cvxCrvToken);
 	}).then(function(instance) {
 		cvxCrv = instance;
 		addContract("system","cvxCrv",cvxCrv.address);

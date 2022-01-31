@@ -17,11 +17,11 @@ contract ExtraRewardStashV2 {
     uint256 private constant maxRewards = 8;
     uint256 private constant WEEK = 7 * 86400;
 
-    uint256 public immutable pid;
-    address public immutable operator;
-    address public immutable staker;
-    address public immutable gauge;
-    address public immutable rewardFactory;
+    uint256 public pid;
+    address public operator;
+    address public staker;
+    address public gauge;
+    address public rewardFactory;
    
     mapping(address => uint256) public historicalRewards;
 
@@ -33,7 +33,11 @@ contract ExtraRewardStashV2 {
     uint256 public tokenCount;
     TokenInfo[maxRewards] public tokenInfo;
 
-    constructor(uint256 _pid, address _operator, address _staker, address _gauge, address _rFactory) public {
+    constructor() public {
+    }
+
+    function initialize(uint256 _pid, address _operator, address _staker, address _gauge, address _rFactory) external {
+        require(gauge == address(0),"!init");
         pid = _pid;
         operator = _operator;
         staker = _staker;

@@ -31,7 +31,11 @@ contract ExtraRewardStashV1 {
     }
     TokenInfo public tokenInfo;
 
-    constructor(uint256 _pid, address _operator, address _staker, address _gauge, address _rFactory) public {
+    constructor() public {
+    }
+
+    function initialize(uint256 _pid, address _operator, address _staker, address _gauge, address _rFactory) external {
+        require(gauge == address(0),"!init");
         pid = _pid;
         operator = _operator;
         staker = _staker;
