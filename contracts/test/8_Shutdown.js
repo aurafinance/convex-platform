@@ -12,7 +12,7 @@ const VirtualBalanceRewardPool = artifacts.require("VirtualBalanceRewardPool");
 const cvxRewardPool = artifacts.require("cvxRewardPool");
 const ConvexToken = artifacts.require("ConvexToken");
 const cvxCrvToken = artifacts.require("cvxCrvToken");
-const StashFactory = artifacts.require("StashFactory");
+const StashFactory = artifacts.require("StashFactoryV2");
 const RewardFactory = artifacts.require("RewardFactory");
 const TokenFactory = artifacts.require("TokenFactory");
 const PoolManager = artifacts.require("PoolManager");
@@ -20,6 +20,7 @@ const PoolManager = artifacts.require("PoolManager");
 const IExchange = artifacts.require("IExchange");
 const ICurveFi = artifacts.require("I3CurveFi");
 const IERC20 = artifacts.require("IERC20");
+const ProxyFactory = artifacts.require("ProxyFactory");
 
 
 
@@ -84,7 +85,7 @@ contract("Shutdown Test", async accounts => {
     await voteproxy.balanceOfPool(threeCrvGauge).then(a=>console.log("3crv on gauge " +a));
 
     //shutdown, funds move back to booster(depositor)
-    await booster.shutdownSystem(false,{from:admin});
+    await booster.shutdownSystem({from:admin});
     console.log("system shutdown");
     await threeCrv.balanceOf(userA).then(a=>console.log("3crv on wallet: " +a));
     await rewardPool.balanceOf(userA).then(a=>console.log("deposited lp: " +a));
@@ -108,13 +109,14 @@ contract("Shutdown Test", async accounts => {
     
     //first booster and set as operator on vote proxy
     console.log("create new booster and factories")
-    let booster2 = await Booster.new(voteproxy.address,cvx.address,0);
+    let booster2 = await Booster.new(voteproxy.address,cvx.address);
     await voteproxy.setOperator(booster2.address);
     console.log("set new booster as voteproxy operator");
 
     //create factories
+    let proxyFactory = await ProxyFactory.at(contractList.system.proxyFactory);
     let rewardFactory2 = await RewardFactory.new(booster2.address);
-    let stashFactory2 = await StashFactory.new(booster2.address, rewardFactory2.address );
+    let stashFactory2 = await StashFactory.new(booster2.address, rewardFactory2.address, proxyFactory.address);
     let tokenFactory2 = await TokenFactory.new(booster2.address);
     await booster2.setFactories(rewardFactory2.address, stashFactory2.address, tokenFactory2.address);
     console.log("factories set");
