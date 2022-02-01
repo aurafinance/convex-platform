@@ -95,5 +95,8 @@ Run local fork pinned to block `12450999`
 ```
 ganache-cli \
   --fork https://eth-mainnet.alchemyapi.io/v2/<KEY>@12450999 \
-  --unlock-all
+  -u 0x947B7742C403f20e5FaCcDAc5E092C943E7D0277 \
+  -u 0x3d8d742ee7fbc497ae671528a19a1489ba204482 \
+  -u 0x40907540d8a6C65c637785e8f8B742ae6b0b9968 \
+  -u 0xb01151B93B5783c252333Ce0707D704d0BBDF5EC
 ```
