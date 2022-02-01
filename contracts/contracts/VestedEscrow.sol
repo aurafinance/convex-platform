@@ -18,7 +18,11 @@ import "@openzeppelin/contracts-0.6/utils/Address.sol";
 import "@openzeppelin/contracts-0.6/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts-0.6/utils/ReentrancyGuard.sol";
 
-
+/**
+ * @title   VestedEscrow
+ * @author  ConvexFinance
+ * @notice  vested escrow for team tokens
+ */
 contract VestedEscrow is ReentrancyGuard{
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
@@ -42,6 +46,13 @@ contract VestedEscrow is ReentrancyGuard{
     event Fund(address indexed recipient, uint256 reward);
     event Claim(address indexed user, uint256 amount);
 
+    /**
+     * @param rewardToken_    reward token (CVX)
+     * @param starttime_      timestamp when claim starts
+     * @param endtime_        when vesting ends
+     * @param stakeContract_  contract where rewardToken can be staked (cvxStaker)
+     * @param fundAdmin_      admin to fund recipients with rewardTokens (deployer)
+     */
     constructor(
         address rewardToken_,
         uint256 starttime_,
@@ -53,12 +64,12 @@ contract VestedEscrow is ReentrancyGuard{
         require(endtime_ > starttime_,"end must be greater");
 
         rewardToken = IERC20(rewardToken_);
-        startTime = starttime_;
-        endTime = endtime_;
-        totalTime = endTime.sub(startTime);
         admin = msg.sender;
         fundAdmin = fundAdmin_;
         stakeContract = stakeContract_;
+        startTime = starttime_;
+        endTime = endtime_;
+        totalTime = endTime.sub(startTime);
     }
 
     function setAdmin(address _admin) external {
@@ -79,6 +90,11 @@ contract VestedEscrow is ReentrancyGuard{
         return true;
     }
     
+    /**
+     * @notice fund recipients with rewardTokens
+     * @param _recipient  array of recipients to vest rewardTokens for
+     * @param _amount     arrary of amount of rewardTokens to vest 
+     */
     function fund(address[] calldata _recipient, uint256[] calldata _amount) external nonReentrant returns(bool){
         require(msg.sender == fundAdmin || msg.sender == admin, "!auth");
 

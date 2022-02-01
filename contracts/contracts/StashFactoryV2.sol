@@ -8,7 +8,11 @@ import "@openzeppelin/contracts-0.6/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts-0.6/utils/Address.sol";
 import "@openzeppelin/contracts-0.6/token/ERC20/SafeERC20.sol";
 
-
+/**
+ * @title   StashFactoryV2
+ * @author  ConvexFinance
+ * @notice  Factory to deploy reward stash contracts that handle extra rewards
+ */
 contract StashFactoryV2 {
     using Address for address;
 
@@ -24,6 +28,12 @@ contract StashFactoryV2 {
     address public v2Implementation;
     address public v3Implementation;
 
+    /**
+     * @param _operator       operator is Booster
+     * @param _rewardFactory  factory that creates reward contract that are 
+     *                        VirtualBalanceRewardPool's used for extra pool rewards
+     * @param _proxyFactory   deploy proxies with stash implementation
+     */
     constructor(address _operator, address _rewardFactory, address _proxyFactory) public {
         operator = _operator;
         rewardFactory = _rewardFactory;
