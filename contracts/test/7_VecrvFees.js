@@ -12,7 +12,7 @@ const VirtualBalanceRewardPool = artifacts.require("VirtualBalanceRewardPool");
 const cvxRewardPool = artifacts.require("cvxRewardPool");
 const ConvexToken = artifacts.require("ConvexToken");
 const cvxCrvToken = artifacts.require("cvxCrvToken");
-const StashFactory = artifacts.require("StashFactory");
+const StashFactory = artifacts.require("StashFactoryV2");
 const RewardFactory = artifacts.require("RewardFactory");
 
 
@@ -95,7 +95,8 @@ contract("VeCrv Fees Test", async accounts => {
     await vecrv.balanceOf(voteproxy.address).then(a=>console.log("proxy veCrv(==0): " +a));
     console.log("staking crv");
     await cvxCrv.approve(cvxCrvRewardsContract.address,0,{from:userA});
-    await cvxCrv.approve(cvxCrvRewardsContract.address,startingcrv,{from:userA});
+    let cvxCrvBalance = await cvxCrv.balanceOf(userA);
+    await cvxCrv.approve(cvxCrvRewardsContract.address,cvxCrvBalance,{from:userA});
     await cvxCrvRewardsContract.stakeAll({from:userA})
     console.log("staked")
     await cvxCrv.balanceOf(userA).then(a=>console.log("cvxCrv on wallet: " +a))

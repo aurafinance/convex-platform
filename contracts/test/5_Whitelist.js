@@ -12,7 +12,7 @@ const VirtualBalanceRewardPool = artifacts.require("VirtualBalanceRewardPool");
 const cvxRewardPool = artifacts.require("cvxRewardPool");
 const ConvexToken = artifacts.require("ConvexToken");
 const cvxCrvToken = artifacts.require("cvxCrvToken");
-const StashFactory = artifacts.require("StashFactory");
+const StashFactory = artifacts.require("StashFactoryV2");
 const RewardFactory = artifacts.require("RewardFactory");
 
 
