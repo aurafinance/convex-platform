@@ -10,7 +10,7 @@ import "@openzeppelin/contracts-0.6/token/ERC20/SafeERC20.sol";
 /**
  * @title   Booster
  * @author  ConvexFinance
- * @notice  Main deposit contract; keeps track of pool info & user deposits; distributed rewards.
+ * @notice  Main deposit contract; keeps track of pool info & user deposits; distributes rewards.
  * @dev     They say all paths lead to Rome, and the cvxBooster is no different. This is where it all goes down.
  *          It is responsible for tracking all the pools, it collects rewards from all pools and redirects it.
  */
