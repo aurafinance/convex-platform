@@ -7,10 +7,15 @@ import "@openzeppelin/contracts-0.6/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts-0.6/utils/Address.sol";
 import "@openzeppelin/contracts-0.6/token/ERC20/SafeERC20.sol";
 
-//Hold extra reward tokens on behalf of pools that have the same token as a reward
-//Because anyone can call gauge.claim_rewards(address) for the convex staking contract, rewards
-//could be forced to the wrong pool.
-//hold tokens here and distribute fairly(or at least more fairly), to both pools at a later timing
+/**
+ * @title   ArbitratorVault
+ * @author  ConvexFinance
+ * @notice  Hold extra reward tokens on behalf of pools that have the same token as a reward (e.g. stkAAVE fro multiple aave pools)
+ * @dev     Sits on top of the STASH to basically handle the re-distribution of rewards to multiple stashes.
+ *          Because anyone can call gauge.claim_rewards(address) for the convex staking contract, rewards
+ *          could be forced to the wrong pool. Hold tokens here and distribute fairly(or at least more fairly),
+ *          to both pools at a later timing.
+ */
 contract ArbitratorVault{
     using SafeERC20 for IERC20;
     using Address for address;
@@ -20,6 +25,9 @@ contract ArbitratorVault{
     address public depositor;
 
 
+    /**
+     * @param  _depositor Booster address
+     */
     constructor(address _depositor)public
     {
         operator = msg.sender;
@@ -30,7 +38,11 @@ contract ArbitratorVault{
         require(msg.sender == operator, "!auth");
         operator = _op;
     }
-    
+
+    /**
+    * @notice  Permissioned fn to distribute any accrued rewards to a relevant stash
+    * @dev     Only called by operator: ConvexMultisig
+    */
     function distribute(address _token, uint256[] calldata _toPids, uint256[] calldata _amounts) external {
        require(msg.sender == operator, "!auth");
 

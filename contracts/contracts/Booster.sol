@@ -7,17 +7,23 @@ import "@openzeppelin/contracts-0.6/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts-0.6/utils/Address.sol";
 import "@openzeppelin/contracts-0.6/token/ERC20/SafeERC20.sol";
 
-
+/**
+ * @title   Booster
+ * @author  ConvexFinance
+ * @notice  Main deposit contract; keeps track of pool info & user deposits; distributed rewards.
+ * @dev     They say all paths lead to Rome, and the cvxBooster is no different. This is where it all goes down.
+ *          It is responsible for tracking all the pools, it collects rewards from all pools and redirects it.
+ */
 contract Booster{
     using SafeERC20 for IERC20;
     using Address for address;
     using SafeMath for uint256;
 
-    address public constant crv = address(0xD533a949740bb3306d119CC777fa900bA034cd52);
-    address public constant registry = address(0x0000000022D53366457F9d5E68Ec105046FC4383);
-    uint256 public constant distributionAddressId = 4;
-    address public constant voteOwnership = address(0xE478de485ad2fe566d49342Cbd03E49ed7DB3356);
-    address public constant voteParameter = address(0xBCfF8B0b9419b9A88c44546519b1e909cF330399);
+    address public immutable crv;
+    address public immutable registry;
+    uint256 public immutable distributionAddressId;
+    address public immutable voteOwnership;
+    address public immutable voteParameter;
 
     uint256 public lockIncentive = 1000; //incentive to crv stakers
     uint256 public stakerIncentive = 450; //incentive to native token stakers
@@ -61,9 +67,35 @@ contract Booster{
     event Deposited(address indexed user, uint256 indexed poolid, uint256 amount);
     event Withdrawn(address indexed user, uint256 indexed poolid, uint256 amount);
 
-    constructor(address _staker, address _minter) public {
-        isShutdown = false;
+    /**
+     * @dev Constructor doing what constructors do. It is noteworthy that
+     *      a lot of basic config is set to 0 - expecting subsequent calls to setFeeInfo etc.
+     * @param _staker                 VoterProxy (locks the crv and adds to all gauges)
+     * @param _minter                 CVX token, or the thing that mints it
+     * @param _crv                    CRV
+     * @param _registry               Curve address registry (0x0000000022D53366457F9d5E68Ec105046FC4383)
+     * @param _distributionAddressId  ID of the feeToken distribution in the curve registry
+     * @param _voteOwnership          Address of the Curve DAO responsible for ownership stuff
+     * @param _voteParameter          Address of the Curve DAO responsible for param updates
+     */
+    constructor(
+        address _staker,
+        address _minter,
+        address _crv,
+        address _registry,
+        uint _distributionAddressId,
+        address _voteOwnership,
+        address _voteParameter,
+    ) public {
         staker = _staker;
+        minter = _minter;
+        crv = _crv;
+        registry = _registry;
+        distributionAddressId = _distributionAddressId;
+        voteOwnership = _voteOwnership;
+        voteParameter = _voteParameter;
+        isShutdown = false;
+
         owner = msg.sender;
         voteDelegate = msg.sender;
         feeManager = msg.sender;
@@ -71,27 +103,38 @@ contract Booster{
         feeDistro = address(0); //address(0xA464e6DCda8AC41e03616F95f4BC98a13b8922Dc);
         feeToken = address(0); //address(0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490);
         treasury = address(0);
-        minter = _minter;
     }
 
 
     /// SETTER SECTION ///
 
+    /**
+     * @notice Owner is responsible for setting initial config, updating vote delegate and shutting system
+     */
     function setOwner(address _owner) external {
         require(msg.sender == owner, "!auth");
         owner = _owner;
     }
 
+    /**
+     * @notice Fee Manager can update the fees (lockIncentive, stakeIncentive, earmarkIncentive, platformFee)
+     */
     function setFeeManager(address _feeM) external {
         require(msg.sender == feeManager, "!auth");
         feeManager = _feeM;
     }
 
+    /**
+     * @notice Pool manager is responsible for adding new pools
+     */
     function setPoolManager(address _poolM) external {
         require(msg.sender == poolManager, "!auth");
         poolManager = _poolM;
     }
 
+    /**
+     * @notice Factories are used when deploying new pools. Only the stash factory is mutable after init
+     */
     function setFactories(address _rfactory, address _sfactory, address _tfactory) external {
         require(msg.sender == owner, "!auth");
         
@@ -108,16 +151,25 @@ contract Booster{
         stashFactory = _sfactory;
     }
 
+    /**
+     * @notice Arbitrator handles tokens that are used as secondary rewards across multiple pools
+     */
     function setArbitrator(address _arb) external {
         require(msg.sender==owner, "!auth");
         rewardArbitrator = _arb;
     }
 
+    /**
+     * @notice Vote Delegate has the rights to cast votes on the VoterProxy via the Booster
+     */
     function setVoteDelegate(address _voteDelegate) external {
         require(msg.sender==voteDelegate, "!auth");
         voteDelegate = _voteDelegate;
     }
 
+    /**
+     * @notice Only called once, to set the addresses of cvxCrv (lockRewards) and cvx staking (stakerRewards)
+     */
     function setRewardContracts(address _rewards, address _stakerRewards) external {
         require(msg.sender == owner, "!auth");
         
@@ -129,7 +181,10 @@ contract Booster{
         }
     }
 
-    // Set reward token and claim contract, get from Curve's registry
+    /**
+     * @notice Set reward token and claim contract, get from Curve's registry.
+     * @dev    This creates a secondary (VirtualRewardsPool) rewards contract for the vcxCrv staking contract
+     */
     function setFeeInfo() external {
         require(msg.sender==feeManager, "!auth");
         
@@ -142,6 +197,13 @@ contract Booster{
         }
     }
 
+    /**
+     * @notice Fee manager can set all the relevant fees
+     * @param _lockFees     % for cvxCrv stakers where 1% == 100
+     * @param _stakerFees   % for CVX stakers where 1% == 100
+     * @param _callerFees   % for whoever calls the claim where 1% == 100
+     * @param _platform     % for "treasury" or vlCVX where 1% == 100
+     */
     function setFees(uint256 _lockFees, uint256 _stakerFees, uint256 _callerFees, uint256 _platform) external{
         require(msg.sender==feeManager, "!auth");
 
@@ -160,6 +222,9 @@ contract Booster{
         }
     }
 
+    /**
+     * @notice Set the address of the treasury (i.e. vlCVX)
+     */
     function setTreasury(address _treasury) external {
         require(msg.sender==feeManager, "!auth");
         treasury = _treasury;
@@ -172,7 +237,10 @@ contract Booster{
         return poolInfo.length;
     }
 
-    //create a new pool
+    /**
+     * @notice Called by the PoolManager (i.e. PoolManagerProxy) to add a new pool - creates all the required
+     *         contracts (DepositToken, RewardPool, Stash) and then adds to the list!
+     */
     function addPool(address _lptoken, address _gauge, uint256 _stashVersion) external returns(bool){
         require(msg.sender==poolManager && !isShutdown, "!add");
         require(_gauge != address(0) && _lptoken != address(0),"!param");
@@ -210,7 +278,10 @@ contract Booster{
         return true;
     }
 
-    //shutdown pool
+    /**
+     * @notice Shuts down the pool by withdrawing everything from the gauge to here (can later be
+     *         claimed from depositors by using the withdraw fn) and marking it as shut down
+     */
     function shutdownPool(uint256 _pid) external returns(bool){
         require(msg.sender==poolManager, "!auth");
         PoolInfo storage pool = poolInfo[_pid];
@@ -224,9 +295,10 @@ contract Booster{
         return true;
     }
 
-    //shutdown this contract.
-    //  unstake and pull all lp tokens to this address
-    //  only allow withdrawals
+    /**
+     * @notice Shuts down the WHOLE SYSTEM by withdrawing all the LP tokens ot here and then allowing
+     *         for subsequent withdrawal by any depositors.
+     */
     function shutdownSystem() external{
         require(msg.sender == owner, "!auth");
         isShutdown = true;
@@ -245,8 +317,10 @@ contract Booster{
         }
     }
 
-
-    //deposit lp tokens and stake
+    /**
+     * @notice  Deposits an "_amount" to a given gauge (specified by _pid), mints a `DepositToken`
+     *          and subsequently stakes that on Convex BaseRewardPool
+     */
     function deposit(uint256 _pid, uint256 _amount, bool _stake) public returns(bool){
         require(!isShutdown,"shutdown");
         PoolInfo storage pool = poolInfo[_pid];
@@ -285,7 +359,10 @@ contract Booster{
         return true;
     }
 
-    //deposit all lp tokens and stake
+    /**
+     * @notice  Deposits all a senders balance to a given gauge (specified by _pid), mints a `DepositToken`
+     *          and subsequently stakes that on Convex BaseRewardPool
+     */
     function depositAll(uint256 _pid, bool _stake) external returns(bool){
         address lptoken = poolInfo[_pid].lptoken;
         uint256 balance = IERC20(lptoken).balanceOf(msg.sender);
@@ -293,7 +370,13 @@ contract Booster{
         return true;
     }
 
-    //withdraw lp tokens
+    /**
+     * @notice  Withdraws LP tokens from a given PID (& user).
+     *          1. Burn the cvxLP balance from "_from" (implicit balance check)
+     *          2. If pool !shutdown.. withdraw from gauge
+     *          3. If stash, stash rewards
+     *          4. Transfer out the LP tokens
+     */
     function _withdraw(uint256 _pid, uint256 _amount, address _from, address _to) internal {
         PoolInfo storage pool = poolInfo[_pid];
         address lptoken = pool.lptoken;
@@ -322,13 +405,18 @@ contract Booster{
         emit Withdrawn(_to, _pid, _amount);
     }
 
-    //withdraw lp tokens
+    /**
+     * @notice  Withdraw a given amount from a pool (must already been unstaked from the Convex Reward Pool -
+     *          BaseRewardPool uses withdrawAndUnwrap to get around this)
+     */
     function withdraw(uint256 _pid, uint256 _amount) public returns(bool){
         _withdraw(_pid,_amount,msg.sender,msg.sender);
         return true;
     }
 
-    //withdraw all lp tokens
+    /**
+     * @notice  Withdraw all the senders LP tokens from a given gauge
+     */
     function withdrawAll(uint256 _pid) public returns(bool){
         address token = poolInfo[_pid].token;
         uint256 userBal = IERC20(token).balanceOf(msg.sender);
@@ -336,7 +424,9 @@ contract Booster{
         return true;
     }
 
-    //allow reward contracts to send here and withdraw to user
+    /**
+     * @notice Allows the actual BaseRewardPool to withdraw and send directly to the user
+     */
     function withdrawTo(uint256 _pid, uint256 _amount, address _to) external returns(bool){
         address rewardContract = poolInfo[_pid].crvRewards;
         require(msg.sender == rewardContract,"!auth");
@@ -346,7 +436,9 @@ contract Booster{
     }
 
 
-    //delegate address votes on dao
+    /**
+     * @notice Delegate address votes on dao via VoterProxy
+     */
     function vote(uint256 _voteId, address _votingAddress, bool _support) external returns(bool){
         require(msg.sender == voteDelegate, "!auth");
         require(_votingAddress == voteOwnership || _votingAddress == voteParameter, "!voteAddr");
@@ -355,6 +447,9 @@ contract Booster{
         return true;
     }
 
+    /**
+     * @notice Delegate address votes on gauge weight via VoterProxy
+     */
     function voteGaugeWeight(address[] calldata _gauge, uint256[] calldata _weight ) external returns(bool){
         require(msg.sender == voteDelegate, "!auth");
 
@@ -364,6 +459,9 @@ contract Booster{
         return true;
     }
 
+    /**
+     * @notice Allows a stash to claim secondary rewards from a gauge
+     */
     function claimRewards(uint256 _pid, address _gauge) external returns(bool){
         address stash = poolInfo[_pid].stash;
         require(msg.sender == stash,"!auth");
@@ -372,6 +470,9 @@ contract Booster{
         return true;
     }
 
+    /**
+     * @notice Tells the Curve gauge to redirect any accrued rewards to the given stash via the VoterProxy
+     */
     function setGaugeRedirect(uint256 _pid) external returns(bool){
         address stash = poolInfo[_pid].stash;
         require(msg.sender == stash,"!auth");
@@ -381,7 +482,11 @@ contract Booster{
         return true;
     }
 
-    //claim crv and extra rewards and disperse to reward contracts
+    /**
+     * @notice Basically a hugely pivotal function.
+     *         Repsonsible for collecting the crv from gauge, and then redistributing to the correct place.
+     *         Pays the caller a fee to process this.
+     */
     function _earmarkRewards(uint256 _pid) internal {
         PoolInfo storage pool = poolInfo[_pid];
         require(pool.shutdown == false, "pool is closed");
@@ -404,11 +509,14 @@ contract Booster{
         uint256 crvBal = IERC20(crv).balanceOf(address(this));
 
         if (crvBal > 0) {
+            // LockIncentive = cvxCrv stakers (currently 10%)
             uint256 _lockIncentive = crvBal.mul(lockIncentive).div(FEE_DENOMINATOR);
+            // StakerIncentive = cvx stakers (currently 5%)
             uint256 _stakerIncentive = crvBal.mul(stakerIncentive).div(FEE_DENOMINATOR);
+            // CallIncentive = caller of this contract (currently 1%)
             uint256 _callIncentive = crvBal.mul(earmarkIncentive).div(FEE_DENOMINATOR);
             
-            //send treasury
+            // Treasury = vlCVX (currently 1%)
             if(treasury != address(0) && treasury != address(this) && platformFee > 0){
                 //only subtract after address condition check
                 uint256 _platform = crvBal.mul(platformFee).div(FEE_DENOMINATOR);
@@ -437,13 +545,21 @@ contract Booster{
         }
     }
 
+    /**
+     * @notice Basically a hugely pivotal function.
+     *         Repsonsible for collecting the crv from gauge, and then redistributing to the correct place.
+     *         Pays the caller a fee to process this.
+     */
     function earmarkRewards(uint256 _pid) external returns(bool){
         require(!isShutdown,"shutdown");
         _earmarkRewards(_pid);
         return true;
     }
 
-    //claim fees from curve distro contract, put in lockers' reward contract
+    /**
+     * @notice Claim fees from curve distro contract, put in lockers' reward contract.
+     *         lockFees is the secondary reward contract that uses the virtual balances from cvxCrv
+     */
     function earmarkFees() external returns(bool){
         //claim fee rewards
         IStaker(staker).claimFees(feeDistro, feeToken);
@@ -454,7 +570,10 @@ contract Booster{
         return true;
     }
 
-    //callback from reward contract when crv is received.
+    /**
+     * @notice Callback from reward contract when crv is received.
+     * @dev    Goes off and mints a relative amount of `CVX` based on the distribution schedule.
+     */
     function rewardClaimed(uint256 _pid, address _address, uint256 _amount) external returns(bool){
         address rewardContract = poolInfo[_pid].crvRewards;
         require(msg.sender == rewardContract || msg.sender == lockRewards, "!auth");
