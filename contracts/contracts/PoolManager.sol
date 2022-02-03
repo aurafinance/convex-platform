@@ -9,20 +9,28 @@ import "@openzeppelin/contracts-0.6/token/ERC20/SafeERC20.sol";
 
 
 
+/**
+ * @title   PoolManager
+ * @author  ConvexFinance
+ * @notice  Add pool to Booster
+ */
 contract PoolManager{
     using SafeERC20 for IERC20;
     using Address for address;
     using SafeMath for uint256;
 
-    address public constant registry = address(0x0000000022D53366457F9d5E68Ec105046FC4383);
-
     address public operator;
-    address public pools;
+    address public immutable pools;
+    address public immutable registry;
 
-
-    constructor(address _pools) public {
+    /**
+     * @param _pools      Contract to call addPool on (Booster)
+     * @param _registry   Curve registry
+     */
+    constructor(address _pools, address _registry) public {
         operator = msg.sender;
         pools = _pools;
+        registry = _registry;
     }
 
     function setOperator(address _operator) external {
@@ -36,8 +44,13 @@ contract PoolManager{
         IPools(pools).setPoolManager(operator);
     }
 
-    //add a new curve pool to the system.
-    //gauge must be on curve's registry, thus anyone can call
+    /**
+     * @notice  Add a new curve pool to the system.
+     * @dev     This function is callable by anyone. The gauge must be on curve's registry. 
+     * @param _swap           LP Token
+     * @param _gauge          Gauge contract
+     * @param _stashVersion   ExtraRewardStash version
+     */
     function addPool(address _swap, address _gauge, uint256 _stashVersion) external returns(bool){
         require(_gauge != address(0),"gauge is 0");
         require(_swap != address(0),"swap is 0");

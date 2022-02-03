@@ -5,21 +5,30 @@ import "./Interfaces.sol";
 import "@openzeppelin/contracts-0.6/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts-0.6/math/SafeMath.sol";
 
-/*
-Immutable pool manager proxy to enforce that when a pool is shutdown, the proper number
-of lp tokens are returned to the booster contract for withdrawal
-*/
+/**
+ * @title   PoolManagerShutdownProxy
+ * @author  ConvexFinance
+ * @notice  Basically a PoolManager to has a better shutdown and calls addPool on PoolManagerProxy 
+ *          Immutable pool manager proxy to enforce that when a  pool is shutdown, the proper number
+ *          of lp tokens are returned to the booster contract for withdrawal
+ */
 contract PoolManagerShutdownProxy{
     using SafeMath for uint256;
 
-    address public constant pools = address(0x5F47010F230cE1568BeA53a06eBAF528D05c5c1B);
-    address public constant booster = address(0xF403C135812408BFbE8713b5A23a04b3D48AAE31);
+    address public immutable pools;
+    address public immutable booster;
     address public owner;
     address public operator;
 
-    constructor() public {
-        //default to multisig
-        owner = address(0xa3C5A1e09150B75ff251c1a7815A07182c3de2FB);
+    constructor(
+      address _pools,
+      address _booster,
+      address _owner,
+      address _operator
+    ) public {
+        pools = _pools;
+        booster = _booster;
+        owner = _owner; 
         operator = msg.sender;
     }
 
@@ -43,11 +52,11 @@ contract PoolManagerShutdownProxy{
         operator = _operator;
     }
 
-    // sealed to be immutable
-    // function revertControl() external{
-    // }
-
-    //shutdown a pool - only OPERATOR
+    /**
+     * @notice  Shutdown a pool - only OPERATOR
+     * @dev     Shutdowns a pool and ensures all the LP tokens are properly
+     *          withdrawn to the Booster contract 
+     */
     function shutdownPool(uint256 _pid) external onlyOperator returns(bool){
         //get pool info
         (address lptoken, address depositToken,,,,bool isshutdown) = IPools(booster).poolInfo(_pid);
