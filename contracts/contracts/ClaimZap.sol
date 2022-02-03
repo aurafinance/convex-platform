@@ -52,16 +52,16 @@ contract ClaimZap{
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
-    address public constant crv;
-    address public constant cvx;
-    address public constant cvxCrv;
-    address public constant crvDeposit;
-    address public constant cvxCrvRewards;
-    address public constant cvxRewards;
+    address public immutable crv;
+    address public immutable cvx;
+    address public immutable cvxCrv;
+    address public immutable crvDeposit;
+    address public immutable cvxCrvRewards;
+    address public immutable cvxRewards;
 
-    address public constant exchange;
+    address public immutable exchange;
 
-    address public constant locker;
+    address public immutable locker;
 
     address public immutable owner;
 
