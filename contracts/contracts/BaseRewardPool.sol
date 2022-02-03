@@ -277,7 +277,7 @@ contract BaseRewardPool {
     }
 
     /**
-     * @dev Gives a staker their rewards, witht he option of claiming extra rewards
+     * @dev Gives a staker their rewards, with the option of claiming extra rewards
      * @param _account     Account for which to claim
      * @param _claimExtras Get the child rewards too?
      */

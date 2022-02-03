@@ -22,7 +22,7 @@ contract ArbitratorVault{
     using SafeMath for uint256;
 
     address public operator;
-    address public depositor;
+    address public immutable depositor;
 
 
     /**
