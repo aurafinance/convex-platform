@@ -57,6 +57,14 @@ interface IConvexChef{
 }
 
 
+/**
+ * @title   ConvexRewarder
+ * @author  ConvexFinance
+ * @notice  This contract effectively wraps the Convex Masterchef and combines with Sushi masterchef.
+ *          2 Master Chefs in one place? Must be a delicious feast!
+ * @dev     This would be used if for example Sushi had ongoing rewards for a given SLP, which was also
+ *          getting rewards on CVX.
+ */
 contract ConvexRewarder is ISushiRewarder{
     using SafeERC20 for IERC20;
     using SafeMath for uint256;

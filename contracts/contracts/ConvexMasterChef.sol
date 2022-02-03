@@ -9,7 +9,15 @@ import "@openzeppelin/contracts-0.6/utils/Context.sol";
 import "@openzeppelin/contracts-0.6/access/Ownable.sol";
 import "./interfaces/IRewarder.sol";
 
-
+/**
+ * @title   ConvexMasterChef
+ * @author  ConvexFinance
+ * @notice  Masterchef can distribute rewards to n pools over x time
+ * @dev     There are some caveats with this usage - once it's turned on it can't be turned off,
+ *          and thus it can over complicate the distribution of these rewards.
+ *          To kick things off, just transfer CVX here and add some pools - rewards will be distributed
+ *          pro-rata based on the allocation points in each pool vs the total alloc.
+ */
 contract ConvexMasterChef is Ownable {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
@@ -41,11 +49,11 @@ contract ConvexMasterChef is Ownable {
     }
 
     //cvx
-    IERC20 public cvx;
+    IERC20 public immutable cvx;
     // Block number when bonus CVX period ends.
-    uint256 public bonusEndBlock;
+    uint256 public immutable bonusEndBlock;
     // CVX tokens created per block.
-    uint256 public rewardPerBlock;
+    uint256 public immutable rewardPerBlock;
     // Bonus muliplier for early cvx makers.
     uint256 public constant BONUS_MULTIPLIER = 2;
 
@@ -56,7 +64,7 @@ contract ConvexMasterChef is Ownable {
     // Total allocation points. Must be the sum of all allocation points in all pools.
     uint256 public totalAllocPoint = 0;
     // The block number when CVX mining starts.
-    uint256 public startBlock;
+    uint256 public immutable startBlock;
 
     // Events
     event Deposit(address indexed user, uint256 indexed pid, uint256 amount);
