@@ -30,6 +30,12 @@ interface ICvxLocker {
 // send rewards back to owner(cvx locker)
 // register token types that can be distributed
 
+/**
+ * @title   CvxStakingProxy
+ * @author  ConvexFinance
+ * @notice  Receives CRV from the Booster as overall reward, then distributes to vlCVX holders
+ * @dev     
+ */
 contract CvxStakingProxy {
     using SafeERC20
     for IERC20;

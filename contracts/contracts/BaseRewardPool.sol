@@ -47,19 +47,27 @@ import "@openzeppelin/contracts-0.6/utils/Address.sol";
 import "@openzeppelin/contracts-0.6/token/ERC20/SafeERC20.sol";
 
 
-
+/**
+ * @title   BaseRewardPool
+ * @author  Synthetix -> ConvexFinance
+ * @notice  Unipool rewards contract that is re-deployed from rFactory for each staking pool.
+ * @dev     Changes made here are to do with the delayed reward allocation. Curve is queued for rewards
+ *          and the distribution only begins once the new rewards are sufficiently large, or the epoch has ended.
+ *          Additionally, enables hooks for `extraRewards` that can be enabled at any point to distribute a child
+ *          reward token (i.e. a secondary one from Curve, or a seperate one)
+ */
 contract BaseRewardPool {
      using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
-    IERC20 public rewardToken;
-    IERC20 public stakingToken;
+    IERC20 public immutable rewardToken;
+    IERC20 public immutable stakingToken;
     uint256 public constant duration = 7 days;
 
-    address public operator;
-    address public rewardManager;
+    address public immutable operator;
+    address public immutable rewardManager;
 
-    uint256 public pid;
+    uint256 public immutable pid;
     uint256 public periodFinish = 0;
     uint256 public rewardRate = 0;
     uint256 public lastUpdateTime;
@@ -80,6 +88,14 @@ contract BaseRewardPool {
     event Withdrawn(address indexed user, uint256 amount);
     event RewardPaid(address indexed user, uint256 reward);
 
+    /**
+     * @dev This is called directly from RewardFactory
+     * @param pid_           Effectively the pool identifier - used in the Booster
+     * @param stakingToken_  Pool LP token
+     * @param rewardToken_   Crv
+     * @param operator_      Booster
+     * @param rewardManager_ RewardFactory
+     */
     constructor(
         uint256 pid_,
         address stakingToken_,
@@ -260,6 +276,11 @@ contract BaseRewardPool {
         withdrawAndUnwrap(_balances[msg.sender],claim);
     }
 
+    /**
+     * @dev Gives a staker their rewards, with the option of claiming extra rewards
+     * @param _account     Account for which to claim
+     * @param _claimExtras Get the child rewards too?
+     */
     function getReward(address _account, bool _claimExtras) public updateReward(_account) returns(bool){
         uint256 reward = earned(_account);
         if (reward > 0) {
@@ -278,16 +299,27 @@ contract BaseRewardPool {
         return true;
     }
 
+    /**
+     * @dev Called by a staker to get their allocated rewards
+     */
     function getReward() external returns(bool){
         getReward(msg.sender,true);
         return true;
     }
 
+    /**
+     * @dev Donate some extra rewards to this contract
+     */
     function donate(uint256 _amount) external returns(bool){
         IERC20(rewardToken).safeTransferFrom(msg.sender, address(this), _amount);
         queuedRewards = queuedRewards.add(_amount);
     }
 
+    /**
+     * @dev Called by the booster to allocate new Crv rewards to this pool
+     *      Curve is queued for rewards and the distribution only begins once the new rewards are sufficiently
+     *      large, or the epoch has ended.
+     */
     function queueNewRewards(uint256 _rewards) external returns(bool){
         require(msg.sender == operator, "!authorized");
 
