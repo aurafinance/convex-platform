@@ -9,17 +9,22 @@ import "@openzeppelin/contracts-0.6/utils/Address.sol";
 import "@openzeppelin/contracts-0.6/token/ERC20/SafeERC20.sol";
 
 
-//Stash v3: support for curve gauge reward redirect
-//v3.1: support for arbitrary token rewards outside of gauge rewards
-//      add reward hook to pull rewards during claims
-//v3.2: move constuctor to init function for proxy creation
-
+/**
+ * @title   ExtraRewardStashV3
+ * @author  ConvexFinance
+ * @notice  ExtraRewardStash for pools added to the Booster to handle extra rewards
+ *          that aren't CRV that can be claimed from a gauge.
+ *          - v3.0: Support for curve gauge reward redirect
+ *          - v3.1: Support for arbitrary token rewards outside of gauge rewards add 
+ *            reward hook to pull rewards during claims
+ *          - v3.2: Move constuctor to init function for proxy creation
+ */
 contract ExtraRewardStashV3 {
     using SafeERC20 for IERC20;
     using Address for address;
     using SafeMath for uint256;
 
-    address public constant crv = address(0xD533a949740bb3306d119CC777fa900bA034cd52);
+    address public crv;
     uint256 private constant maxRewards = 8;
 
     uint256 public pid;
@@ -47,13 +52,22 @@ contract ExtraRewardStashV3 {
     constructor() public {
     }
 
-    function initialize(uint256 _pid, address _operator, address _staker, address _gauge, address _rFactory) external {
+    /**
+     * @param _pid        Pool ID
+     * @param _operator   Operator (Booster)
+     * @param _staker     Staker (VoterProxy)
+     * @param _gauge      Gauge
+     * @param _rFactory   Reward factory
+     * @param _crv        CRV token
+     */
+    function initialize(uint256 _pid, address _operator, address _staker, address _gauge, address _rFactory, address _crv) external {
         require(gauge == address(0),"!init");
         pid = _pid;
         operator = _operator;
         staker = _staker;
         gauge = _gauge;
         rewardFactory = _rFactory;
+        crv = _crv;
     }
 
     function getName() external pure returns (string memory) {
@@ -64,7 +78,13 @@ contract ExtraRewardStashV3 {
         return tokenList.length;
     }
 
-    //try claiming if there are reward tokens registered
+    /**
+     * @notice  Claim rewards from the gauge
+     * @dev     The Stash's claimRewards function calls claimRewards on the Booster contract
+     *          which calls claimRewards on the VoterProxy which calls claim_rewards on the gauge
+     *          If a RewardHook is set onRewardClaim is also called on that
+     *          Called by Booster earmarkRewards
+     */
     function claimRewards() external returns (bool) {
         require(msg.sender == operator, "!operator");
 
@@ -121,7 +141,11 @@ contract ExtraRewardStashV3 {
     }
 
 
-    //replace a token on token list
+    /**
+     * @notice  Add a reward token to the token list so it can be claimed
+     * @dev     For each token that is added as a claimable reward a VirtualRewardsPool
+     *          is deployed to handle virtual distribution of tokens 
+     */
     function setToken(address _token) internal {
         TokenInfo storage t = tokenInfo[_token];
 
@@ -154,7 +178,12 @@ contract ExtraRewardStashV3 {
         return true;
     }
 
-    //send all extra rewards to their reward contracts
+    /**
+     * @notice  Distribute rewards
+     * @dev     Send all CRV to the Booster contract and send all extra token
+     *          rewards to the rewardContract VirtualRewardsPool
+     *          Called by Booster earmarkRewards
+     */
     function processStash() external returns(bool){
         require(msg.sender == operator, "!operator");
 
