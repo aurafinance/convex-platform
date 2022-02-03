@@ -8,9 +8,9 @@ import "@openzeppelin/contracts-0.6/math/SafeMath.sol";
 /**
  * @title   PoolManagerShutdownProxy
  * @author  ConvexFinance
- * @notice  Basically a PoolManager to has a better shutdown and calls addPool on PoolManagerProxy 
+ * @notice  Basically a PoolManager that has a better shutdown and calls addPool on PoolManagerProxy. 
  *          Immutable pool manager proxy to enforce that when a  pool is shutdown, the proper number
- *          of lp tokens are returned to the booster contract for withdrawal
+ *          of lp tokens are returned to the booster contract for withdrawal.
  */
 contract PoolManagerShutdownProxy{
     using SafeMath for uint256;
