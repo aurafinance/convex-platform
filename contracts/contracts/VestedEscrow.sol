@@ -18,7 +18,12 @@ import "@openzeppelin/contracts-0.6/utils/Address.sol";
 import "@openzeppelin/contracts-0.6/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts-0.6/utils/ReentrancyGuard.sol";
 
-
+/**
+ * @title   VestedEscrow
+ * @author  ConvexFinance
+ * @notice  Vested escrow for team tokens. Note - this should only be used once at deployment
+ *          because all active stream vesting amounts are based from the startTime.
+ */
 contract VestedEscrow is ReentrancyGuard{
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
@@ -42,6 +47,13 @@ contract VestedEscrow is ReentrancyGuard{
     event Fund(address indexed recipient, uint256 reward);
     event Claim(address indexed user, uint256 amount);
 
+    /**
+     * @param rewardToken_    Reward token (CVX)
+     * @param starttime_      Timestamp when claim starts
+     * @param endtime_        When vesting ends
+     * @param stakeContract_  Contract where rewardToken can be staked (cvxStaker)
+     * @param fundAdmin_      Admin to fund recipients with rewardTokens (deployer)
+     */
     constructor(
         address rewardToken_,
         uint256 starttime_,
@@ -53,12 +65,12 @@ contract VestedEscrow is ReentrancyGuard{
         require(endtime_ > starttime_,"end must be greater");
 
         rewardToken = IERC20(rewardToken_);
-        startTime = starttime_;
-        endTime = endtime_;
-        totalTime = endTime.sub(startTime);
         admin = msg.sender;
         fundAdmin = fundAdmin_;
         stakeContract = stakeContract_;
+        startTime = starttime_;
+        endTime = endtime_;
+        totalTime = endTime.sub(startTime);
     }
 
     function setAdmin(address _admin) external {
@@ -79,6 +91,11 @@ contract VestedEscrow is ReentrancyGuard{
         return true;
     }
     
+    /**
+     * @notice Fund recipients with rewardTokens
+     * @param _recipient  Array of recipients to vest rewardTokens for
+     * @param _amount     Arrary of amount of rewardTokens to vest
+     */
     function fund(address[] calldata _recipient, uint256[] calldata _amount) external nonReentrant returns(bool){
         require(msg.sender == fundAdmin || msg.sender == admin, "!auth");
 

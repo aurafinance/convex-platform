@@ -7,17 +7,23 @@ import "@openzeppelin/contracts-0.6/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts-0.6/utils/Address.sol";
 import "@openzeppelin/contracts-0.6/token/ERC20/SafeERC20.sol";
 
-
+/**
+ * @title   CurveVoterProxy
+ * @author  ConvexFinance
+ * @notice  VoterProxy whitelisted in the curve SmartWalletWhitelist that
+ *          participates in Curve governance. Also handles all deposits since this is 
+ *          the address that has the voting power.
+ */
 contract CurveVoterProxy {
     using SafeERC20 for IERC20;
     using Address for address;
     using SafeMath for uint256;
 
-    address public constant mintr = address(0xd061D61a4d941c39E5453435B6345Dc261C2fcE0);
-    address public constant crv = address(0xD533a949740bb3306d119CC777fa900bA034cd52);
+    address public immutable mintr;
+    address public immutable crv;
 
-    address public constant escrow = address(0x5f3b5DfEb7B28CDbD7FAba78963EE202a494e2A2);
-    address public constant gaugeController = address(0x2F50D538606Fa9EDD2B11E2446BEb18C9D5846bB);
+    address public immutable escrow;
+    address public immutable gaugeController;
     
     address public owner;
     address public operator;
@@ -26,7 +32,23 @@ contract CurveVoterProxy {
     mapping (address => bool) private stashPool;
     mapping (address => bool) private protectedTokens;
 
-    constructor() public {
+    /**
+     * @param _mintr            CRV minter
+     * @param _crv              CRV Token address
+     * @param _escrow           Curve Voting escrow contract
+     * @param _gaugeController  Curve Gauge Controller
+     *                          Controls liquidity gauges and the issuance of coins through the gauges
+     */
+    constructor(
+      address _mintr, 
+      address _crv,
+      address _escrow,
+      address _gaugeController
+    ) public {
+        mintr = _mintr; 
+        crv = _crv;
+        escrow = _escrow;
+        gaugeController = _gaugeController;
         owner = msg.sender;
     }
 
@@ -39,6 +61,10 @@ contract CurveVoterProxy {
         owner = _owner;
     }
 
+    /**
+     * @notice Set the operator of the VoterProxy
+     * @param _operator Address of the operator (Booster)
+     */
     function setOperator(address _operator) external {
         require(msg.sender == owner, "!auth");
         require(operator == address(0) || IDeposit(operator).isShutdown() == true, "needs shutdown");
@@ -46,6 +72,10 @@ contract CurveVoterProxy {
         operator = _operator;
     }
 
+    /**
+     * @notice Set the depositor of the VoterProxy
+     * @param _depositor Address of the depositor (CrvDepositor)
+     */
     function setDepositor(address _depositor) external {
         require(msg.sender == owner, "!auth");
 
@@ -61,6 +91,13 @@ contract CurveVoterProxy {
     }
 
 
+    /**
+     * @notice  Deposit tokens into the Curve Gauge
+     * @dev     Only can be called by the operator (Booster) once this contract has been
+     *          whitelisted by the Curve DAO
+     * @param _token  Deposit LP token address
+     * @param _gauge  Gauge contract to deposit to 
+     */ 
     function deposit(address _token, address _gauge) external returns(bool){
         require(msg.sender == operator, "!auth");
         if(protectedTokens[_token] == false){
@@ -78,7 +115,10 @@ contract CurveVoterProxy {
         return true;
     }
 
-    //stash only function for pulling extra incentive reward tokens out
+    /**
+     * @notice  Withdraw ERC20 tokens that have been distributed as extra rewards
+     * @dev     Only callable a pool's stash contract
+     */
     function withdraw(IERC20 _asset) external returns (uint256 balance) {
         require(stashPool[msg.sender] == true, "!auth");
 
@@ -92,7 +132,13 @@ contract CurveVoterProxy {
         return balance;
     }
 
-    // Withdraw partial funds
+    /**
+     * @notice  Withdraw LP tokens from a gauge 
+     * @dev     Only callable by the operator 
+     * @param _token    LP token address
+     * @param _gauge    Gauge for this LP token
+     * @param _amount   Amount of LP token to withdraw
+     */
     function withdraw(address _token, address _gauge, uint256 _amount) public returns(bool){
         require(msg.sender == operator, "!auth");
         uint256 _balance = IERC20(_token).balanceOf(address(this));
@@ -104,7 +150,13 @@ contract CurveVoterProxy {
         return true;
     }
 
-     function withdrawAll(address _token, address _gauge) external returns(bool){
+    /**
+     * @notice  Withdraw all LP tokens from a gauge 
+     * @dev     Only callable by the operator 
+     * @param _token  LP token address
+     * @param _gauge  Gauge for this LP token
+     */
+    function withdrawAll(address _token, address _gauge) external returns(bool){
         require(msg.sender == operator, "!auth");
         uint256 amount = balanceOfPool(_gauge).add(IERC20(_token).balanceOf(address(this)));
         withdraw(_token, _gauge, amount);
@@ -115,7 +167,14 @@ contract CurveVoterProxy {
         ICurveGauge(_gauge).withdraw(_amount);
         return _amount;
     }
-
+    
+    
+    /**
+     * @notice  Lock CRV in curves voting escrow contract
+     * @dev     Called by the CrvDepositor contract
+     * @param _value      Amount of crv to lock
+     * @param _unlockTime Timestamp to unlock (max is 4 years)
+     */
     function createLock(uint256 _value, uint256 _unlockTime) external returns(bool){
         require(msg.sender == depositor, "!auth");
         IERC20(crv).safeApprove(escrow, 0);
@@ -123,7 +182,10 @@ contract CurveVoterProxy {
         ICurveVoteEscrow(escrow).create_lock(_value, _unlockTime);
         return true;
     }
-
+  
+    /**
+     * @notice Called by the CrvDepositor to increase amount of locked curve
+     */
     function increaseAmount(uint256 _value) external returns(bool){
         require(msg.sender == depositor, "!auth");
         IERC20(crv).safeApprove(escrow, 0);
@@ -132,18 +194,29 @@ contract CurveVoterProxy {
         return true;
     }
 
+    /**
+     * @notice Called by the CrvDepositor to increase unlocked time of curve
+     * @param _value Timestamp to increase locking to
+     */
     function increaseTime(uint256 _value) external returns(bool){
         require(msg.sender == depositor, "!auth");
         ICurveVoteEscrow(escrow).increase_unlock_time(_value);
         return true;
     }
 
+    /**
+     * @notice  Withdraw all CRV from Curve's voting escrow contract
+     * @dev     Only callable by CrvDepositor and can only withdraw if lock has expired
+     */
     function release() external returns(bool){
         require(msg.sender == depositor, "!auth");
         ICurveVoteEscrow(escrow).withdraw();
         return true;
     }
 
+    /**
+     * @notice Vote on CRV DAO for proposal
+     */
     function vote(uint256 _voteId, address _votingAddress, bool _support) external returns(bool){
         require(msg.sender == operator, "!auth");
         IVoting(_votingAddress).vote(_voteId,_support,false);
@@ -158,6 +231,10 @@ contract CurveVoterProxy {
         return true;
     }
 
+    /**
+     * @notice  Claim CRV from Curve
+     * @dev     Claim CRV for LP token staking from the CRV minter contract
+     */
     function claimCrv(address _gauge) external returns (uint256){
         require(msg.sender == operator, "!auth");
         
@@ -170,12 +247,22 @@ contract CurveVoterProxy {
         return _balance;
     }
 
+    /**
+     * @notice  Claim extra rewards from gauge
+     * @dev     Called by operator (Booster) to claim extra rewards 
+     */
     function claimRewards(address _gauge) external returns(bool){
         require(msg.sender == operator, "!auth");
         ICurveGauge(_gauge).claim_rewards();
         return true;
     }
 
+    /**
+     * @notice  Claim fees (3crv) from staking lp tokens
+     * @dev     Only callable by the operator Booster
+     * @param _distroContract   Fee distribution contract
+     * @param _token            LP token to claim fees for
+     */
     function claimFees(address _distroContract, address _token) external returns (uint256){
         require(msg.sender == operator, "!auth");
         IFeeDistro(_distroContract).claim();
