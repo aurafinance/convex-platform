@@ -6,15 +6,21 @@ import "@openzeppelin/contracts-0.6/math/SafeMath.sol";
 import "@openzeppelin/contracts-0.6/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts-0.6/token/ERC20/SafeERC20.sol";
 
-
-//Rescue erc20 tokens off the voter proxy
-// - can only collect non-LP and non-gauge tokens
-// - should not be set to collect tokens used as incentives in v2 gauges
-
 interface IRewardDeposit {
     function addReward(address _token, uint256 _amount) external;
 }
 
+/**
+ * @title   ExtraRewardStashTokenRescue
+ * @author  ConvexFinance
+ * @notice  Rescue ERC20 tokens from the VoterProxy
+ *          This is basically a special ExtraRewardStashV3 which was temporarily added as the
+ *          V3 implementation for the StashFactory then a special pool was added to the Booster 
+ *          with a RescueToken rewards get sent to ether the vlCvxExtraRewardDistribution or
+ *          the treasury
+ *          - Can only collect non-LP and non-gauge tokens
+ *          - Should not be set to collect tokens used as incentives in v2 gauges
+ */
 contract ExtraRewardStashTokenRescue {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
@@ -62,6 +68,11 @@ contract ExtraRewardStashTokenRescue {
         return true;
     }
 
+    /**
+     * @notice  Claim reward tokens and either send them to the rewardDeposit (vlCvxExtraRewardDistribution)
+     *          or send then directly to the treasury
+     * @param _token ERC20 token to claim from staked (VoterProxy)
+     */
     function claimRewardToken(address _token) public returns (bool) {
         require(distributor == address(0) || msg.sender == distributor, "!distributor");
         require(activeTokens[_token] > 0,"!active");
@@ -93,7 +104,9 @@ contract ExtraRewardStashTokenRescue {
         treasuryDeposit = _treasury;
     }
 
-    //register an extra reward token to be handled
+    /**
+     * @notice Register an extra reward token to be handled
+     */
     function setExtraReward(address _token, uint256 _option) external{
         //owner of booster can set extra rewards
         require(IDeposit(operator).owner() == msg.sender, "!owner");
