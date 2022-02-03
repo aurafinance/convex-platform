@@ -3,19 +3,30 @@ pragma solidity 0.6.12;
 
 import "@openzeppelin/contracts-0.6/token/ERC20/ERC20.sol";
 
-//Dummy token for master chef plugin
+
+/**
+ * @title   ChefToken
+ * @author  ConvexFinance
+ * @notice  Dummy token for master chef plugin
+ */
 contract ChefToken is ERC20 {
 
     bool public isInit;
 
-    constructor()
+    /**
+     * @param _symbolArg  token symbol
+     */
+    constructor(string memory _symbolArg)
         public
         ERC20(
             "Chef Token",
-            "cvxCT"
+            _symbolArg
         ){
     }
     
+    /**
+     * @dev One time init fn, mints a single token to sender
+     */
     function create() external {
         require(!isInit, "init");
         

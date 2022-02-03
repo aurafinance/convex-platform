@@ -7,7 +7,12 @@ import "@openzeppelin/contracts-0.6/utils/Address.sol";
 import "@openzeppelin/contracts-0.6/token/ERC20/SafeERC20.sol";
 
 
-//This is currently only a test contract to test extra rewards on master chef
+/**
+ * @title   ChefExtraRewards
+ * @author  ConvexFinance
+ * @notice  This is currently only a test contract to test extra rewards on master chef
+ * @dev     When a user deposits/withdraws/claims in MasterChef, this hook `onReward` is called.
+ */
 contract ChefExtraRewards{
     using SafeERC20 for IERC20;
     
