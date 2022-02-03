@@ -85,7 +85,7 @@ contract Booster{
         address _registry,
         uint _distributionAddressId,
         address _voteOwnership,
-        address _voteParameter,
+        address _voteParameter
     ) public {
         staker = _staker;
         minter = _minter;

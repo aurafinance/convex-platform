@@ -36,7 +36,7 @@ contract BasicCvxHolder{
         address _cvxcrvStaking,
         address _cvx,
         address _crv,
-        address _crvDeposit,
+        address _crvDeposit
     ) public {
         operator = msg.sender;
         cvxlocker = ILockedCvx(_cvxlocker);

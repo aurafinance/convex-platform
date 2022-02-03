@@ -1,10 +1,12 @@
 {
   "scripts": {
-    "deploy": "truffle migrate --network ganachecli --skip-dry-run"
+    "deploy": "truffle migrate --network ganachecli --skip-dry-run",
+    "compile": "truffle compile"
   },
   "dependencies": {
     "@openzeppelin/contracts-0.6": "npm:@openzeppelin/contracts@3.4.0",
     "@truffle/hdwallet-provider": "^1.2.6",
+    "truffle": "5.4.31",
     "big-number": "2.0.0",
     "chai": "^4.3.4",
     "jsonfile": "^6.1.0",
