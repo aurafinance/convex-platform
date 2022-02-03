@@ -33,7 +33,7 @@ contract ConvexToken is ERC20{
      * @param _nameArg      Token name
      * @param _symbolArg    Token symbol
      */
-    constructor(address _proxy)
+    constructor(address _proxy, string memory _nameArg, string memory _symbolArg)
         public
         ERC20(
             _nameArg,

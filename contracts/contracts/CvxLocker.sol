@@ -114,8 +114,8 @@ contract CvxLocker is ReentrancyGuard, Ownable {
     bool public isShutdown = false;
 
     //erc20-like interface
-    string private immutable _name;
-    string private immutable _symbol;
+    string private _name;
+    string private _symbol;
     uint8 private immutable _decimals;
 
     /* ========== CONSTRUCTOR ========== */
@@ -140,10 +140,10 @@ contract CvxLocker is ReentrancyGuard, Ownable {
         _symbol = _symbolArg;
         _decimals = 18;
 
-        stakingToken = _stakingToken;
+        stakingToken = IERC20(_stakingToken);
         cvxCrv = _cvxCrv;
         boostPayment = _boostPayment;
-        cvxCrvStaking = _cvxCrvStaking;
+        cvxcrvStaking = _cvxCrvStaking;
 
         uint256 currentEpoch = block.timestamp.div(rewardsDuration).mul(rewardsDuration);
         epochs.push(Epoch({
