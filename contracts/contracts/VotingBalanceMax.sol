@@ -10,8 +10,8 @@ import "@openzeppelin/contracts-0.6/math/SafeMath.sol";
 /**
  * @title    VotingBalanceMax
  * @author   ConvexFinance
- * @notice   retrieve a users voting balance based on their amount of locked CVX
- * @dev      calls CvxLocker contract to get locked balance for a user
+ * @notice   Retrieve a users voting balance based on their amount of locked CVX
+ * @dev      Calls CvxLocker contract to get locked balance for a user
  *           upgrade of the original VotingBalance contract to seperate allow list
  *           and block list and get pending balances
  */
@@ -20,32 +20,25 @@ contract VotingBalanceMax{
 
     address public immutable locker;
     address public immutable eligiblelist;
-    uint256 public immutable rewardsDuration;
-    uint256 public immutable lockDuration;
+    uint256 public constant rewardsDuration = 86400 * 7;
+    uint256 public constant lockDuration = rewardsDuration * 17;
 
     /** 
-     * @param _eligiblelist     address of VotingEligibility contract used for allow list and block list
+     * @param _eligiblelist     Address of VotingEligibility contract used for allow list and block list
      * @param _locker           CvxLocker contract address
-     * @param _rewardsDuration  CvxReward duration 
-     * @param _lockDuration     Cvx lock duration 
      */
     constructor(
       address _eligiblelist, 
-      address _locker, 
-      uint256 _rewardsDuration, 
-      uint256 _lockDuration
+      address _locker 
     ) public {
         eligiblelist = _eligiblelist;
         locker = _locker;
-        rewardsDuration = _rewardsDuration;
-        lockDuration = _lockDuration;
     }
 
     /**
-     * @notice  get the voting balance of an address
-     * @dev     looks up locked CVX balance of address from CvxLocker
-     * @param _account address to lookup balance of
-     * @returns balance
+     * @notice  Get the voting balance of an address
+     * @dev     Looks up locked CVX balance of address from CvxLocker
+     * @param _account Address to lookup balance of
      */
     function balanceOf(address _account) external view returns(uint256){
 
@@ -71,10 +64,9 @@ contract VotingBalanceMax{
     }
 
     /**
-     * @notice  get the pending voting balance of an address
-     * @dev     calculates the pending balance for the active epoch  
-     * @param _account address to lookup balance of
-     * @returns pending balance
+     * @notice  Get the pending voting balance of an address
+     * @dev     Calculates the pending balance for the active epoch  
+     * @param _account Address to lookup balance of
      */
     function pendingBalanceOf(address _account) external view returns(uint256){
 

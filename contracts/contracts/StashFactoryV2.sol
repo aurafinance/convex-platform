@@ -29,10 +29,10 @@ contract StashFactoryV2 {
     address public v3Implementation;
 
     /**
-     * @param _operator       operator is Booster
-     * @param _rewardFactory  factory that creates reward contract that are 
+     * @param _operator       Operator is Booster
+     * @param _rewardFactory  Factory that creates reward contract that are 
      *                        VirtualBalanceRewardPool's used for extra pool rewards
-     * @param _proxyFactory   deploy proxies with stash implementation
+     * @param _proxyFactory   Deploy proxies with stash implementation
      */
     constructor(address _operator, address _rewardFactory, address _proxyFactory) public {
         operator = _operator;

@@ -21,7 +21,7 @@ import "@openzeppelin/contracts-0.6/utils/ReentrancyGuard.sol";
 /**
  * @title   VestedEscrow
  * @author  ConvexFinance
- * @notice  vested escrow for team tokens
+ * @notice  Vested escrow for team tokens
  */
 contract VestedEscrow is ReentrancyGuard{
     using SafeMath for uint256;
@@ -47,11 +47,11 @@ contract VestedEscrow is ReentrancyGuard{
     event Claim(address indexed user, uint256 amount);
 
     /**
-     * @param rewardToken_    reward token (CVX)
-     * @param starttime_      timestamp when claim starts
-     * @param endtime_        when vesting ends
-     * @param stakeContract_  contract where rewardToken can be staked (cvxStaker)
-     * @param fundAdmin_      admin to fund recipients with rewardTokens (deployer)
+     * @param rewardToken_    Reward token (CVX)
+     * @param starttime_      Timestamp when claim starts
+     * @param endtime_        When vesting ends
+     * @param stakeContract_  Contract where rewardToken can be staked (cvxStaker)
+     * @param fundAdmin_      Admin to fund recipients with rewardTokens (deployer)
      */
     constructor(
         address rewardToken_,
@@ -91,9 +91,9 @@ contract VestedEscrow is ReentrancyGuard{
     }
     
     /**
-     * @notice fund recipients with rewardTokens
-     * @param _recipient  array of recipients to vest rewardTokens for
-     * @param _amount     arrary of amount of rewardTokens to vest 
+     * @notice Fund recipients with rewardTokens
+     * @param _recipient  Array of recipients to vest rewardTokens for
+     * @param _amount     Arrary of amount of rewardTokens to vest 
      */
     function fund(address[] calldata _recipient, uint256[] calldata _amount) external nonReentrant returns(bool){
         require(msg.sender == fundAdmin || msg.sender == admin, "!auth");

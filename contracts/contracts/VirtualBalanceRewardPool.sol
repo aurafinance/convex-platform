@@ -65,9 +65,9 @@ contract VirtualBalanceWrapper {
 /**
  * @title   VirtualBalanceRewardPool
  * @author  ConvexFinance
- * @notice  reward pool used for ExtraRewards in Booster lockFees (3crv) and
+ * @notice  Reward pool used for ExtraRewards in Booster lockFees (3crv) and
  *          Extra reward stashes
- * @dev     the rewards are sent to this contract for distribution to stakers. This
+ * @dev     The rewards are sent to this contract for distribution to stakers. This
  *          contract does not hold any of the staking tokens it just maintains a virtual
  *          balance of what a user has staked in the staking pool (BaseRewardPool).
  *          For example the Booster sends veCRV fees (3Crv) to a VirtualBalanceRewardPool
@@ -99,8 +99,8 @@ contract VirtualBalanceRewardPool is VirtualBalanceWrapper {
     event RewardPaid(address indexed user, uint256 reward);
 
     /**
-     * @param deposit_  parent deposit pool e.g cvxCRV staking in BaseRewardPool 
-     * @param reward_   the rewards token e.g 3Crv
+     * @param deposit_  Parent deposit pool e.g cvxCRV staking in BaseRewardPool 
+     * @param reward_   The rewards token e.g 3Crv
      * @param op_       Operator contract (Booster)
      */
     constructor(
@@ -115,7 +115,7 @@ contract VirtualBalanceRewardPool is VirtualBalanceWrapper {
 
 
     /**
-     * @notice update rewards earned by this account
+     * @notice Update rewards earned by this account
      */
     modifier updateReward(address account) {
         rewardPerTokenStored = rewardPerToken();
@@ -154,8 +154,8 @@ contract VirtualBalanceRewardPool is VirtualBalanceWrapper {
     }
 
     /**
-     * @notice  update reward, emit, call linked reward's stake
-     * @dev     callable by the deposits address which is the BaseRewardPool
+     * @notice  Update reward, emit, call linked reward's stake
+     * @dev     Callable by the deposits address which is the BaseRewardPool
      *          this updates the virtual balance of this user as this contract doesn't
      *          actually hold any staked tokens it just diributes reward tokens
      */
@@ -169,8 +169,8 @@ contract VirtualBalanceRewardPool is VirtualBalanceWrapper {
     }
 
     /**
-     * @notice  withdraw stake and update reward, emit, call linked reward's stake
-     * @dev     see stake 
+     * @notice  Withdraw stake and update reward, emit, call linked reward's stake
+     * @dev     See stake 
      */
     function withdraw(address _account, uint256 amount)
         public
@@ -183,8 +183,8 @@ contract VirtualBalanceRewardPool is VirtualBalanceWrapper {
     }
 
     /**
-     * @notice  get rewards for this account
-     * @dev     this can be called directly but it is usually called by the
+     * @notice  Get rewards for this account
+     * @dev     This can be called directly but it is usually called by the
      *          BaseRewardPool getReward when the BaseRewardPool loops through
      *          it's extraRewards array calling getReward on all of them
      */

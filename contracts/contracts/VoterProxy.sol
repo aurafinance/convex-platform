@@ -42,7 +42,7 @@ contract CurveVoterProxy {
       address _mintr, 
       address _crv,
       address _escrow,
-      address _gaugeController,
+      address _gaugeController
     ) public {
         mintr = _mintr; 
         crv = _crv;
@@ -61,8 +61,8 @@ contract CurveVoterProxy {
     }
 
     /**
-     * @notice set the operator of the VoterProxy
-     * @param _operator address of the operator (Booster)
+     * @notice Set the operator of the VoterProxy
+     * @param _operator Address of the operator (Booster)
      */
     function setOperator(address _operator) external {
         require(msg.sender == owner, "!auth");
@@ -72,8 +72,8 @@ contract CurveVoterProxy {
     }
 
     /**
-     * @notice set the depositor of the VoterProxy
-     * @param _depositor address of the depositor (CrvDepositor)
+     * @notice Set the depositor of the VoterProxy
+     * @param _depositor Address of the depositor (CrvDepositor)
      */
     function setDepositor(address _depositor) external {
         require(msg.sender == owner, "!auth");
@@ -91,11 +91,11 @@ contract CurveVoterProxy {
 
 
     /**
-     * @notice  deposit tokens into the Curve Gauge
-     * @dev     only can be called by the operator (Booster) once this contract has been
+     * @notice  Deposit tokens into the Curve Gauge
+     * @dev     Only can be called by the operator (Booster) once this contract has been
      *          whitelisted by the Curve DAO
-     * @param _token  deposit LP token address
-     * @param _gauge  gauge contract to deposit to 
+     * @param _token  Deposit LP token address
+     * @param _gauge  Gauge contract to deposit to 
      */ 
     function deposit(address _token, address _gauge) external returns(bool){
         require(msg.sender == operator, "!auth");
@@ -115,8 +115,8 @@ contract CurveVoterProxy {
     }
 
     /**
-     * @notice  withdraw ERC20 tokens that have been distributed as extra rewards
-     * @dev     only callable a pool's stash contract
+     * @notice  Withdraw ERC20 tokens that have been distributed as extra rewards
+     * @dev     Only callable a pool's stash contract
      */
     function withdraw(IERC20 _asset) external returns (uint256 balance) {
         require(stashPool[msg.sender] == true, "!auth");
@@ -132,11 +132,11 @@ contract CurveVoterProxy {
     }
 
     /**
-     * @notice  withdraw LP tokens from a gauge 
-     * @dev     only callable by the operator 
+     * @notice  Withdraw LP tokens from a gauge 
+     * @dev     Only callable by the operator 
      * @param _token    LP token address
-     * @param _gauge    gauge for this LP token
-     * @param _amount   amount of LP token to withdraw
+     * @param _gauge    Gauge for this LP token
+     * @param _amount   Amount of LP token to withdraw
      */
     function withdraw(address _token, address _gauge, uint256 _amount) public returns(bool){
         require(msg.sender == operator, "!auth");
@@ -150,10 +150,10 @@ contract CurveVoterProxy {
     }
 
     /**
-     * @notice  withdraw all LP tokens from a gauge 
-     * @dev     only callable by the operator 
+     * @notice  Withdraw all LP tokens from a gauge 
+     * @dev     Only callable by the operator 
      * @param _token  LP token address
-     * @param _gauge  gauge for this LP token
+     * @param _gauge  Gauge for this LP token
      */
     function withdrawAll(address _token, address _gauge) external returns(bool){
         require(msg.sender == operator, "!auth");
@@ -169,10 +169,10 @@ contract CurveVoterProxy {
     
     
     /**
-     * @notice  lock CRV in curves voting escrow contract
-     * @dev     called by the CrvDepositor contract
-     * @param _value      amount of crv to lock
-     * @param _unlockTime timestamp to unlock (max is 4 years)
+     * @notice  Lock CRV in curves voting escrow contract
+     * @dev     Called by the CrvDepositor contract
+     * @param _value      Amount of crv to lock
+     * @param _unlockTime Timestamp to unlock (max is 4 years)
      */
     function createLock(uint256 _value, uint256 _unlockTime) external returns(bool){
         require(msg.sender == depositor, "!auth");
@@ -183,7 +183,7 @@ contract CurveVoterProxy {
     }
   
     /**
-     * @notice called by the CrvDepositor to increase amount of locked curve
+     * @notice Called by the CrvDepositor to increase amount of locked curve
      */
     function increaseAmount(uint256 _value) external returns(bool){
         require(msg.sender == depositor, "!auth");
@@ -194,8 +194,8 @@ contract CurveVoterProxy {
     }
 
     /**
-     * @notice called by the CrvDepositor to increase unlocked time of curve
-     * @param _value timestamp to increase locking to
+     * @notice Called by the CrvDepositor to increase unlocked time of curve
+     * @param _value Timestamp to increase locking to
      */
     function increaseTime(uint256 _value) external returns(bool){
         require(msg.sender == depositor, "!auth");
@@ -204,8 +204,8 @@ contract CurveVoterProxy {
     }
 
     /**
-     * @notice  withdraw all CRV from Curve's voting escrow contract
-     * @dev     only callable by CrvDepositor and can only withdraw if lock has expired
+     * @notice  Withdraw all CRV from Curve's voting escrow contract
+     * @dev     Only callable by CrvDepositor and can only withdraw if lock has expired
      */
     function release() external returns(bool){
         require(msg.sender == depositor, "!auth");
@@ -214,7 +214,7 @@ contract CurveVoterProxy {
     }
 
     /**
-     * @notice vote on CRV DAO for proposal
+     * @notice Vote on CRV DAO for proposal
      */
     function vote(uint256 _voteId, address _votingAddress, bool _support) external returns(bool){
         require(msg.sender == operator, "!auth");
@@ -231,8 +231,8 @@ contract CurveVoterProxy {
     }
 
     /**
-     * @notice  claim CRV from Curve
-     * @dev     claim CRV for LP token staking from the CRV minter contract
+     * @notice  Claim CRV from Curve
+     * @dev     Claim CRV for LP token staking from the CRV minter contract
      */
     function claimCrv(address _gauge) external returns (uint256){
         require(msg.sender == operator, "!auth");
@@ -247,8 +247,8 @@ contract CurveVoterProxy {
     }
 
     /**
-     * @notice  claim extra rewards from gauge
-     * @dev     called by operator (Booster) to claim extra rewards 
+     * @notice  Claim extra rewards from gauge
+     * @dev     Called by operator (Booster) to claim extra rewards 
      */
     function claimRewards(address _gauge) external returns(bool){
         require(msg.sender == operator, "!auth");
@@ -257,9 +257,9 @@ contract CurveVoterProxy {
     }
 
     /**
-     * @notice  claim fees (3crv) from staking lp tokens
-     * @dev     only callable by the operator Booster
-     * @param _distroContract   fee distribution contract
+     * @notice  Claim fees (3crv) from staking lp tokens
+     * @dev     Only callable by the operator Booster
+     * @param _distroContract   Fee distribution contract
      * @param _token            LP token to claim fees for
      */
     function claimFees(address _distroContract, address _token) external returns (uint256){

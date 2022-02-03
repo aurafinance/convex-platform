@@ -8,10 +8,10 @@ import "@openzeppelin/contracts-0.6/token/ERC20/SafeERC20.sol";
 /**
  * @title   TreasuryFunds
  * @author  ConvexFinance
- * @notice  treasury... simples
- *          - receive treasury funds. operator can withdraw
- *          - allow execute so that certain funds could be staked etc
- *          - allow treasury ownership to be transfered during the vesting stage
+ * @notice  Treasury... simples
+ *          - Receive treasury funds. operator can withdraw
+ *          - Allow execute so that certain funds could be staked etc
+ *          - Allow treasury ownership to be transfered during the vesting stage
  */
 contract TreasuryFunds{
     using SafeERC20 for IERC20;

@@ -20,7 +20,7 @@ contract TokenFactory {
     address public immutable operator;
 
     /**
-     * @param _operator operator is Booster
+     * @param _operator Operator is Booster
      */
     constructor(address _operator) public {
         operator = _operator;
