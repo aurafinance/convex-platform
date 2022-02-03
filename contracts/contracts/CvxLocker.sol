@@ -134,7 +134,7 @@ contract CvxLocker is ReentrancyGuard, Ownable {
         address _stakingToken,
         address _cvxCrv,
         address _boostPayment,
-        address _cvxCrvStaking,
+        address _cvxCrvStaking
     ) public Ownable() {
         _name = _nameArg;
         _symbol = _symbolArg;
