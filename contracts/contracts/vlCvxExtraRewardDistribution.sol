@@ -27,7 +27,7 @@ contract vlCvxExtraRewardDistribution {
     for uint256;
 
     ILockedCvx public immutable cvxlocker;
-    uint256 public immutable rewardsDuration;
+    uint256 public constant rewardsDuration = 86400 * 7;
 
     mapping(address => mapping(uint256 => uint256)) public rewardData; // token -> epoch -> amount
     mapping(address => uint256[]) public rewardEpochs; // token -> epochList
@@ -35,10 +35,8 @@ contract vlCvxExtraRewardDistribution {
 
     /**
      * @param _cvxlocker        CvxLocker contract
-     * @param _rewardsDuration  Epoch duration for rewards
      */
-    constructor(ILockedCvx _cvxlocker, uint256 _rewardsDuration) public {
-      rewardsDuration = _rewardsDuration;
+    constructor(ILockedCvx _cvxlocker) public {
       cvxlocker = _cvxlocker;
     }
 

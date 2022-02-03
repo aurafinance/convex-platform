@@ -12,7 +12,7 @@ import "@openzeppelin/contracts-0.6/math/SafeMath.sol";
  * @author   ConvexFinance
  * @notice   Retrieve a users voting balance based on their amount of locked CVX
  * @dev      Calls CvxLocker contract to get locked balance for a user
- *           upgrade of the original VotingBalance contract to seperate allow list
+ *           upgrade of the original VotingBalance contract to separate allow list
  *           and block list and get pending balances
  */
 contract VotingBalanceMax{

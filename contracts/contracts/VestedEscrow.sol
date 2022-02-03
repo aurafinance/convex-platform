@@ -21,7 +21,8 @@ import "@openzeppelin/contracts-0.6/utils/ReentrancyGuard.sol";
 /**
  * @title   VestedEscrow
  * @author  ConvexFinance
- * @notice  Vested escrow for team tokens
+ * @notice  Vested escrow for team tokens. Note - this should only be used once at deployment
+ *          because all active stream vesting amounts are based from the startTime.
  */
 contract VestedEscrow is ReentrancyGuard{
     using SafeMath for uint256;
@@ -93,7 +94,7 @@ contract VestedEscrow is ReentrancyGuard{
     /**
      * @notice Fund recipients with rewardTokens
      * @param _recipient  Array of recipients to vest rewardTokens for
-     * @param _amount     Arrary of amount of rewardTokens to vest 
+     * @param _amount     Arrary of amount of rewardTokens to vest
      */
     function fund(address[] calldata _recipient, uint256[] calldata _amount) external nonReentrant returns(bool){
         require(msg.sender == fundAdmin || msg.sender == admin, "!auth");

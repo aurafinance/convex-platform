@@ -11,7 +11,8 @@ import "@openzeppelin/contracts-0.6/token/ERC20/SafeERC20.sol";
  * @title   CurveVoterProxy
  * @author  ConvexFinance
  * @notice  VoterProxy whitelisted in the curve SmartWalletWhitelist that
- *          participates in Curve governance
+ *          participates in Curve governance. Also handles all deposits since this is 
+ *          the address that has the voting power.
  */
 contract CurveVoterProxy {
     using SafeERC20 for IERC20;

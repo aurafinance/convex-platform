@@ -47,11 +47,15 @@ import "@openzeppelin/contracts-0.6/utils/Address.sol";
 import "@openzeppelin/contracts-0.6/token/ERC20/SafeERC20.sol";
 
 
-contract VirtualBalanceWrapper {
+abstract contract VirtualBalanceWrapper {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
-    IDeposit public deposits;
+    IDeposit public immutable deposits;
+
+    constructor(address deposit_) internal {
+        deposits = IDeposit(deposit_);
+    }
 
     function totalSupply() public view returns (uint256) {
         return deposits.totalSupply();
@@ -77,10 +81,10 @@ contract VirtualBalanceWrapper {
 contract VirtualBalanceRewardPool is VirtualBalanceWrapper {
     using SafeERC20 for IERC20;
     
-    IERC20 public rewardToken;
+    IERC20 public immutable rewardToken;
     uint256 public constant duration = 7 days;
 
-    address public operator;
+    address public immutable operator;
 
     uint256 public periodFinish = 0;
     uint256 public rewardRate = 0;
@@ -89,7 +93,7 @@ contract VirtualBalanceRewardPool is VirtualBalanceWrapper {
     uint256 public queuedRewards = 0;
     uint256 public currentRewards = 0;
     uint256 public historicalRewards = 0;
-    uint256 public newRewardRatio = 830;
+    uint256 public constant newRewardRatio = 830;
     mapping(address => uint256) public userRewardPerTokenPaid;
     mapping(address => uint256) public rewards;
 
@@ -99,7 +103,7 @@ contract VirtualBalanceRewardPool is VirtualBalanceWrapper {
     event RewardPaid(address indexed user, uint256 reward);
 
     /**
-     * @param deposit_  Parent deposit pool e.g cvxCRV staking in BaseRewardPool 
+     * @param deposit_  Parent deposit pool e.g cvxCRV staking in BaseRewardPool
      * @param reward_   The rewards token e.g 3Crv
      * @param op_       Operator contract (Booster)
      */
@@ -107,8 +111,7 @@ contract VirtualBalanceRewardPool is VirtualBalanceWrapper {
         address deposit_,
         address reward_,
         address op_
-    ) public {
-        deposits = IDeposit(deposit_);
+    ) public VirtualBalanceWrapper(deposit_) {
         rewardToken = IERC20(reward_);
         operator = op_;
     }
@@ -170,7 +173,7 @@ contract VirtualBalanceRewardPool is VirtualBalanceWrapper {
 
     /**
      * @notice  Withdraw stake and update reward, emit, call linked reward's stake
-     * @dev     See stake 
+     * @dev     See stake
      */
     function withdraw(address _account, uint256 amount)
         public
