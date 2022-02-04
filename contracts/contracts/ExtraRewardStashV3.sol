@@ -24,7 +24,7 @@ contract ExtraRewardStashV3 {
     using Address for address;
     using SafeMath for uint256;
 
-    address public crv;
+    address public immutable crv;
     uint256 private constant maxRewards = 8;
 
     uint256 public pid;
@@ -48,8 +48,12 @@ contract ExtraRewardStashV3 {
 
     //address to call for reward pulls
     address public rewardHook;
-
-    constructor() public {
+  
+    /**
+     * @param _crv CRV token address
+     */
+    constructor(address _crv) public {
+      crv = _crv;
     }
 
     /**
@@ -60,7 +64,7 @@ contract ExtraRewardStashV3 {
      * @param _rFactory   Reward factory
      * @param _crv        CRV token
      */
-    function initialize(uint256 _pid, address _operator, address _staker, address _gauge, address _rFactory, address _crv) external {
+    function initialize(uint256 _pid, address _operator, address _staker, address _gauge, address _rFactory) external {
         require(gauge == address(0),"!init");
         pid = _pid;
         operator = _operator;
