@@ -62,7 +62,6 @@ contract ExtraRewardStashV3 {
      * @param _staker     Staker (VoterProxy)
      * @param _gauge      Gauge
      * @param _rFactory   Reward factory
-     * @param _crv        CRV token
      */
     function initialize(uint256 _pid, address _operator, address _staker, address _gauge, address _rFactory) external {
         require(gauge == address(0),"!init");
@@ -71,7 +70,6 @@ contract ExtraRewardStashV3 {
         staker = _staker;
         gauge = _gauge;
         rewardFactory = _rFactory;
-        crv = _crv;
     }
 
     function getName() external pure returns (string memory) {
