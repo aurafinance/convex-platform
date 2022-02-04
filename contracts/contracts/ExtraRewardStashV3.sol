@@ -15,6 +15,9 @@ import "@openzeppelin/contracts-0.6/token/ERC20/SafeERC20.sol";
  * @notice  ExtraRewardStash for pools added to the Booster to handle extra rewards
  *          that aren't CRV that can be claimed from a gauge.
  *          - v3.0: Support for curve gauge reward redirect
+ *            The Booster contract has a function called setGaugeRedirect. This function calls set_rewards_receiver
+ *            On the Curve Guage. This tells the Gauge where to send rewards. The Booster crafts the calldata for this
+ *            transaction and then calls execute on the VoterProxy which executes this transaction on the Curve Gauge
  *          - v3.1: Support for arbitrary token rewards outside of gauge rewards add 
  *            reward hook to pull rewards during claims
  *          - v3.2: Move constuctor to init function for proxy creation
@@ -86,6 +89,9 @@ contract ExtraRewardStashV3 {
      *          which calls claimRewards on the VoterProxy which calls claim_rewards on the gauge
      *          If a RewardHook is set onRewardClaim is also called on that
      *          Called by Booster earmarkRewards
+     *          Guage rewards are sent directly to this stash even though the Curve method claim_rewards
+     *          is being called by the VoterProxy. This is because Curves guages have the ability to redirect
+     *          rewards to somewhere other than msg.sender. This is setup in Booster setGaugeRedirect
      */
     function claimRewards() external returns (bool) {
         require(msg.sender == operator, "!operator");
