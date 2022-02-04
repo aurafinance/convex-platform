@@ -12,7 +12,7 @@ import "@openzeppelin/contracts-0.6/token/ERC20/SafeERC20.sol";
 /**
  * @title   PoolManager
  * @author  ConvexFinance
- * @notice  Add pool to Booster
+ * @notice  Add pool to Booster. Deprecate, use PoolManagerV3 now.
  */
 contract PoolManager{
     using SafeERC20 for IERC20;

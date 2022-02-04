@@ -20,11 +20,15 @@ contract PoolManagerShutdownProxy{
     address public owner;
     address public operator;
 
+    /**
+     * @param _pools PoolManagerProxy (0x5F47010F230cE1568BeA53a06eBAF528D05c5c1B)
+     * @param _booster Booster
+     * @param _owner Executoor
+     */
     constructor(
       address _pools,
       address _booster,
-      address _owner,
-      address _operator
+      address _owner
     ) public {
         pools = _pools;
         booster = _booster;

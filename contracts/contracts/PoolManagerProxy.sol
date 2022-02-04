@@ -17,14 +17,12 @@ contract PoolManagerProxy{
     address public operator;
 
     /**
-     * @param _pools      Contract call call addPool currently Booster
+     * @param _pools      Contract can call addPool currently Booster
      * @param _owner      Contract owner currently multisig
-     * @param _operator   Operator currently deployer 
      */
     constructor(
       address _pools, 
-      address _owner, 
-      address _operator
+      address _owner
     ) public {
         pools = _pools;
         owner = _owner;
@@ -62,7 +60,7 @@ contract PoolManagerProxy{
 
     /**
      * @notice  Add pool to system
-     * @dev     Only callable by the operator looks up the gauge from the gaugeMap to ensure
+     * @dev     Only callable by the operator looks up the gauge from the gaugeMap in Booster to ensure
      *          it hasn't already been added
      */
     function addPool(address _lptoken, address _gauge, uint256 _stashVersion) external onlyOperator returns(bool){
