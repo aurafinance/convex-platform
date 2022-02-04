@@ -20,11 +20,14 @@ contract RescueToken is ERC20 {
     using Address for address;
     using SafeMath for uint256;
 
-    constructor()
+    /**
+     * @param _symbolArg e.g. cvxRT
+     */
+    constructor(string memory _symbolArg)
         public
         ERC20(
             "Recue Token",
-            "cvxRT"
+            _symbolArg
         ){
     }
     
