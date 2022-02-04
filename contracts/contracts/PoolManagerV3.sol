@@ -8,27 +8,37 @@ import "@openzeppelin/contracts-0.6/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts-0.6/utils/Address.sol";
 import "@openzeppelin/contracts-0.6/token/ERC20/SafeERC20.sol";
 
-/*
-Pool Manager v3
-
-Changes:
-- pass through pool manager proxy
-*/
-
+/** 
+ * @title   PoolManagerV3
+ * @author  ConvexFinance
+ * @notice  Pool Manager v3
+ *          PoolManagerV3 calls addPool on PoolManagerShutdownProxy which calls
+ *          addPool on PoolManagerProxy which calls addPool on Booster. 
+ *          PoolManager-ception
+ * @dev     Add pools to the Booster contract
+ */
 contract PoolManagerV3{
     using SafeERC20 for IERC20;
     using Address for address;
     using SafeMath for uint256;
 
-    address public constant gaugeController = address(0x2F50D538606Fa9EDD2B11E2446BEb18C9D5846bB);
     address public immutable pools;
-
+    address public immutable gaugeController;
     address public operator;
     
-    constructor(address _pools) public {
-        //default to multisig
-        operator = address(0xa3C5A1e09150B75ff251c1a7815A07182c3de2FB);
+    /**
+     * @param _pools            Currently PoolManagerProxy
+     * @param _gaugeController  Curve gauge controller e.g: (0x2F50D538606Fa9EDD2B11E2446BEb18C9D5846bB)
+     * @param _operator         Convex multisig
+     */
+    constructor(
+      address _pools, 
+      address _gaugeController, 
+      address _operator
+    ) public {
         pools = _pools;
+        gaugeController = _gaugeController;
+        operator = _operator; 
     }
 
     function setOperator(address _operator) external {
@@ -36,13 +46,17 @@ contract PoolManagerV3{
         operator = _operator;
     }
 
-    //add a new curve pool to the system. (default stash to v3)
+    /**
+     * @notice Add a new curve pool to the system. (default stash to v3)
+     */
     function addPool(address _gauge) external returns(bool){
         _addPool(_gauge,3);
         return true;
     }
 
-    //add a new curve pool to the system.
+    /**
+     * @notice Add a new curve pool to the system
+     */
     function addPool(address _gauge, uint256 _stashVersion) external returns(bool){
         _addPool(_gauge,_stashVersion);
         return true;
