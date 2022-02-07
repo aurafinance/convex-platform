@@ -14,19 +14,20 @@ import "./interfaces/IGaugeController.sol";
  * @dev     Add pools to the Booster contract
  */
 contract PoolManagerV3{
+
     address public immutable pools;
     address public immutable gaugeController;
     address public operator;
     
     /**
-     * @param _pools            Currently PoolManagerProxy
+     * @param _pools            Currently PoolManagerSecondaryProxy
      * @param _gaugeController  Curve gauge controller e.g: (0x2F50D538606Fa9EDD2B11E2446BEb18C9D5846bB)
      * @param _operator         Convex multisig
      */
     constructor(
-      address _pools, 
-      address _gaugeController, 
-      address _operator
+        address _pools, 
+        address _gaugeController, 
+        address _operator
     ) public {
         pools = _pools;
         gaugeController = _gaugeController;

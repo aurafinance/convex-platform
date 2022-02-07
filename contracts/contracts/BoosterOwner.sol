@@ -29,19 +29,19 @@ interface IOwner {
     function revertControl() external;
 }
 
-/*
-Immutable booster owner that requires all pools to be shutdown before shutting down the entire convex system
-A timelock is required if forcing a shutdown if there is a bugged pool that can not be withdrawn from
-
-Allow arbitrary calls to other contracts, but limit how calls are made to Booster
-
-*/
+/**
+ * @title   Booster
+ * @author  ConvexFinance
+ * @notice  Immutable booster owner that requires all pools to be shutdown before shutting down the entire convex system
+ * @dev     A timelock is required if forcing a shutdown if there is a bugged pool that can not be withdrawn from.
+ *          Allow arbitrary calls to other contracts, but limit how calls are made to Booster.
+ */
 contract BoosterOwner{
 
-    address public constant booster = address(0xF403C135812408BFbE8713b5A23a04b3D48AAE31);
-    address public constant stashFactory = address(0x884da067B66677e72530df91eabb6e3CE69c2bE4);
-    address public constant rescueStash = address(0x01140351069af98416cC08b16424b9E765436531);
     address public immutable poolManager;
+    address public immutable booster;
+    address public immutable stashFactory;
+    address public immutable rescueStash;
     address public owner;
     address public pendingowner;
     bool public isSealed;
@@ -57,10 +57,25 @@ contract BoosterOwner{
     event AcceptedOwnership(address newOwner);
     event OwnershipSealed();
 
-    constructor(address _poolManager) public {
-        //default to multisig
-        owner = address(0xa3C5A1e09150B75ff251c1a7815A07182c3de2FB);
+    /**
+     * @param _owner         Owner (e.g. CVX multisig)
+     * @param _poolManager   PoolManager (e.g. PoolManagerSecondaryProxy or 0xD20904e5916113D11414F083229e9C8C6F91D1e1)
+     * @param _booster       The booster (e.g. 0xF403C135812408BFbE8713b5A23a04b3D48AAE31)
+     * @param _stashFactory  Creates stashes (e.g. 0x884da067B66677e72530df91eabb6e3CE69c2bE4)
+     * @param _rescueStash   Rescues tokens for subsequent vlCVX redistribution (e.g. 0x01140351069af98416cC08b16424b9E765436531)
+     */
+    constructor(
+        address _owner,
+        address _poolManager,
+        address _booster,
+        address _stashFactory,
+        address _rescueStash
+    ) public {
+        owner = _owner;
         poolManager = _poolManager;
+        booster = _booster;
+        stashFactory = _stashFactory;
+        rescueStash = _rescueStash;
     }
 
     modifier onlyOwner() {
