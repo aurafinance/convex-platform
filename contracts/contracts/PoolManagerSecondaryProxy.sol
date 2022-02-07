@@ -32,10 +32,10 @@ contract PoolManagerSecondaryProxy{
      * @param _owner Executoor
      */
     constructor(
-      address _gaugeController,
-      address _pools,
-      address _booster,
-      address _owner
+        address _gaugeController,
+        address _pools,
+        address _booster,
+        address _owner
     ) public {
         gaugeController = _gaugeController;
         pools = _pools;
