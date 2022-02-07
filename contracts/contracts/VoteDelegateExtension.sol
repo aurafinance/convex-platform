@@ -4,15 +4,19 @@ pragma solidity 0.6.12;
 import "./interfaces/IBooster.sol";
 import "@openzeppelin/contracts-0.6/math/SafeMath.sol";
 
-/*
-Add a layer to voting to easily apply data packing into vote id, as well as simplify calling functions
-*/
+/**
+ * @title   VoteDelegateExtension
+ * @author  ConvexFinance
+ * @notice  Add a layer to voting to easily apply data packing into vote id, as well as simplify calling functions
+ * @dev     Wraps the Convex -> Curve voting process and applies some shared addresses, methods and helper fns for
+ *          relaying the result of a Convex snapshot proposal to the Curve DAO.
+ */
 contract VoteDelegateExtension{
     using SafeMath for uint256;
 
-    address public constant voteOwnership = address(0xE478de485ad2fe566d49342Cbd03E49ed7DB3356);
-    address public constant voteParameter = address(0xBCfF8B0b9419b9A88c44546519b1e909cF330399);
-    address public constant booster = address(0xF403C135812408BFbE8713b5A23a04b3D48AAE31);
+    address public immutable voteOwnership;
+    address public immutable voteParameter;
+    address public immutable booster;
 
     uint256 private constant MAX_UINT_128  = (2**128) - 1;
     uint256 private constant MAX_UINT_64  = (2**64) - 1;
@@ -22,11 +26,30 @@ contract VoteDelegateExtension{
     address public daoOperator;
     address public gaugeOperator;
 
-    constructor() public {
-        //default to multisig
-        owner = address(0xa3C5A1e09150B75ff251c1a7815A07182c3de2FB);
-        daoOperator = address(0xa3C5A1e09150B75ff251c1a7815A07182c3de2FB);
-        gaugeOperator = address(0xa3C5A1e09150B75ff251c1a7815A07182c3de2FB);
+    /* ========== CONSTRUCTOR ========== */
+
+    /**
+     * @param _owner         e.g. 0xa3C5A1e09150B75ff251c1a7815A07182c3de2FB
+     * @param _daoOperator   e.g. 0xa3C5A1e09150B75ff251c1a7815A07182c3de2FB
+     * @param _gaugeOperator e.g. 0xa3C5A1e09150B75ff251c1a7815A07182c3de2FB
+     * @param _voteOwnership e.g. 0xE478de485ad2fe566d49342Cbd03E49ed7DB3356
+     * @param _voteParameter  e.g. 0xBCfF8B0b9419b9A88c44546519b1e909cF330399
+     * @param _booster       e.g. 0xF403C135812408BFbE8713b5A23a04b3D48AAE31
+     */
+    constructor(
+        address _owner,
+        address _daoOperator,
+        address _gaugeOperator,
+        address _voteOwnership,
+        address _voteParameter,
+        address _booster
+    ) public {
+        owner = _owner;
+        daoOperator = _daoOperator;
+        gaugeOperator = _gaugeOperator;
+        voteOwnership = _voteOwnership;
+        voteParameter = _voteParameter;
+        booster = _booster;
     }
 
     modifier onlyOwner() {

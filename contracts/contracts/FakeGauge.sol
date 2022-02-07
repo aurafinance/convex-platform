@@ -4,7 +4,9 @@ pragma solidity 0.6.12;
 import "@openzeppelin/contracts-0.6/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts-0.6/token/ERC20/SafeERC20.sol";
 
-
+/**
+ * @dev Used in tests to break the shutdown of a given pool by blocking withdrawals
+ */
 contract FakeGauge {
     using SafeERC20 for IERC20;
 

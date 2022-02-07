@@ -4,6 +4,11 @@ pragma solidity 0.6.12;
 import "@openzeppelin/contracts-0.6/utils/Address.sol";
 import "@openzeppelin/contracts-0.6/access/Ownable.sol";
 
+/**
+ * @title   VotingEligibility
+ * @author  ConvexFinance
+ * @notice  Supports eligibility management and looking for VotingBalanceMax which is used in the snapshot
+ */
 contract VotingEligibility is Ownable{
     using Address for address;
 

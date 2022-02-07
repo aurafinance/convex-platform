@@ -5,6 +5,12 @@ import "@openzeppelin/contracts-0.6/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts-0.6/utils/Address.sol";
 import "@openzeppelin/contracts-0.6/token/ERC20/SafeERC20.sol";
 
+
+/**
+ * @title  RedirectableGauge
+ * @author ConvexFinance
+ * @dev    Used in tests to check for redirecting rewards
+ */
 contract RedirectableGauge{
     using SafeERC20 for IERC20;
     using Address for address;

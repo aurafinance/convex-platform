@@ -1,7 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.6.12;
 
-
+/**
+ * @title  SimpleProxy
+ * @author ConvexFinance
+ * @dev    Just a contract that acts as an intermediary between the owner and any other contract.
+ *         Seems unused. 
+ */
 contract SimpleProxy {
 
     address public owner;
