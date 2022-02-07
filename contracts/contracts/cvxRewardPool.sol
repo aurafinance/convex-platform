@@ -47,6 +47,14 @@ import "@openzeppelin/contracts-0.6/utils/Address.sol";
 import "@openzeppelin/contracts-0.6/token/ERC20/SafeERC20.sol";
 
 
+/**
+ * @title   cvxRewardPool
+ * @author  ConvexFinance
+ * @notice  Base reward pool for $CVX deposits (both for CVX staking and ultimately vlCVX)
+ * @dev     Core differences between this and BaseRewardPool are that this does not hook into the booster
+ *          as a pool, but simply receives CRV from the overall emission, then converts to cvxCRV on withdrawal.
+ *          The CVX StakingProxy deposits on behalf of the CvxLocker and claims rewards in cvxCRV.
+ */
 contract cvxRewardPool{
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
@@ -82,6 +90,17 @@ contract cvxRewardPool{
     event Withdrawn(address indexed user, uint256 amount);
     event RewardPaid(address indexed user, uint256 reward);
 
+    /* ========== CONSTRUCTOR ========== */
+
+    /**
+     * @param stakingToken_     CVX
+     * @param rewardToken_      cvxCRV
+     * @param crvDeposits_      crvDepositor, used to convert CRV to cvxCRV on reward withdrawal
+     * @param cvxCrvRewards_    cvxCRV rewards contract, for optional staking upon reward withdrawal
+     * @param cvxCrvToken_      cvxCRV token itself
+     * @param operator_         Booster
+     * @param rewardManager_    In the case of CVX, the deployer
+     */
     constructor(
         address stakingToken_,
         address rewardToken_,
@@ -160,6 +179,11 @@ contract cvxRewardPool{
                 .add(rewards[account]);
     }
 
+    /**
+    * @dev Earned subtracts the lock incentive that is paid out to depositors of crv in cvxCRV.
+    *      This is just used for displaying data on the front end - if the lock incentive changes,
+    *      it won't break the system as the user will just be given the balance of cvxCRV in this contract.
+    */
     function earned(address account) external view returns (uint256) {
         uint256 depositFeeRate = ICrvDeposit(crvDeposits).lockIncentive();
 

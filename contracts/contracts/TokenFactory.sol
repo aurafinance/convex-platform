@@ -18,18 +18,28 @@ contract TokenFactory {
     using Address for address;
 
     address public immutable operator;
+    string public namePostfix;
+    string public symbolPrefix;
 
     /**
-     * @param _operator Operator is Booster
+     * @param _operator         Operator is Booster
+     * @param _namePostfix      Postfixes lpToken name
+     * @param _symbolPrefix     Prefixed lpToken symbol
      */
-    constructor(address _operator) public {
+    constructor(
+        address _operator,
+        string memory _namePostfix,
+        string memory _symbolPrefix
+    ) public {
         operator = _operator;
+        namePostfix = _namePostfix;
+        symbolPrefix = _symbolPrefix;
     }
 
     function CreateDepositToken(address _lptoken) external returns(address){
         require(msg.sender == operator, "!authorized");
 
-        DepositToken dtoken = new DepositToken(operator,_lptoken);
+        DepositToken dtoken = new DepositToken(operator,_lptoken,namePostfix,symbolPrefix);
         return address(dtoken);
     }
 }
