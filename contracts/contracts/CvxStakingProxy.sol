@@ -24,12 +24,18 @@ interface ICvxLocker {
 }
 
 
-// receive tokens to stake
-// get current staked balance
-// withdraw staked tokens
-// send rewards back to owner(cvx locker)
-// register token types that can be distributed
-
+/**
+ * @title   CvxStakingProxy
+ * @author  ConvexFinance
+ * @notice  Receives CRV from the Booster as overall reward, then distributes to vlCVX holders. Also
+ *          acts as a depositor proxy to support deposit/withdrawals from the CVX staking contract. 
+ * @dev     From CVX:
+ *           - receive tokens to stake
+ *           - get current staked balance
+ *           - withdraw staked tokens
+ *           - send rewards back to owner(cvx locker)
+ *           - register token types that can be distributed
+ */
 contract CvxStakingProxy {
     using SafeERC20
     for IERC20;
@@ -39,14 +45,14 @@ contract CvxStakingProxy {
     for uint256;
 
     //tokens
-    address public constant crv = address(0xD533a949740bb3306d119CC777fa900bA034cd52);
-    address public constant cvx = address(0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B);
-    address public constant cvxCrv = address(0x62B9c7356A2Dc64a1969e19C23e4f579F9810Aa7);
+    address public immutable crv;
+    address public immutable cvx;
+    address public immutable cvxCrv;
 
     //convex addresses
-    address public constant cvxStaking = address(0xCF50b810E57Ac33B91dCF525C6ddd9881B139332);
-    address public constant cvxCrvStaking = address(0x3Fe65692bfCD0e6CF84cB1E7d24108E434A7587e);
-    address public constant crvDeposit = address(0x8014595F2AB54cD7c604B00E9fb932176fDc86Ae);
+    address public immutable cvxStaking;
+    address public immutable cvxCrvStaking;
+    address public immutable crvDeposit;
     uint256 public constant denominator = 10000;
 
     address public immutable rewards;
@@ -57,9 +63,34 @@ contract CvxStakingProxy {
 
     event RewardsDistributed(address indexed token, uint256 amount);
 
-    constructor(address _rewards) public {
+    /* ========== CONSTRUCTOR ========== */
+
+    /**
+     * @param _rewards       vlCVX
+     * @param _crv           CRV token
+     * @param _cvx           CVX token
+     * @param _cvxCrv        cvxCRV token
+     * @param _cvxStaking    cvxRewardPool
+     * @param _cvxCrvStaking BaseRewardPool for cvxCRV staking
+     * @param _crvDeposit    crvDepositor
+     */
+    constructor(
+        address _rewards,
+        address _crv,
+        address _cvx,
+        address _cvxCrv,
+        address _cvxStaking,
+        address _cvxCrvStaking,
+        address _crvDeposit
+    ) public {
         rewards = _rewards;
         owner = msg.sender;
+        crv = _crv;
+        cvx = _cvx;
+        cvxCrv = _cvxCrv;
+        cvxStaking = _cvxStaking;
+        cvxCrvStaking = _cvxCrvStaking;
+        crvDeposit = _crvDeposit;
     }
 
     function setPendingOwner(address _po) external {
@@ -121,6 +152,10 @@ contract CvxStakingProxy {
         IConvexRewards(cvxStaking).stakeAll();
     }
 
+    /**
+    * @dev Collects cvxCRV rewards from cvxRewardPool, converts any CRV deposited directly from
+    *      the booster, and then applies the rewards to the cvxLocker, rewarding the caller in the process.
+    */
     function distribute() external {
         //claim rewards
         IConvexRewards(cvxStaking).getReward(false);

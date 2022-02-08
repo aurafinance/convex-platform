@@ -10,17 +10,30 @@ import "@openzeppelin/contracts-0.6/utils/Address.sol";
 import "@openzeppelin/contracts-0.6/token/ERC20/SafeERC20.sol";
 
 
+/**
+ * @title   RewardFactory
+ * @author  ConvexFinance
+ * @notice  Used to deploy reward pools when a new pool is added to the Booster
+ *          contract. This contract deploys two types of reward pools:
+ *          - BaseRewardPool handles CRV rewards for guages
+ *          - VirtualBalanceRewardPool for extra rewards
+ */
 contract RewardFactory {
     using Address for address;
 
-    address public constant crv = address(0xD533a949740bb3306d119CC777fa900bA034cd52);
+    address public immutable operator;
+    address public immutable crv;
 
-    address public operator;
     mapping (address => bool) private rewardAccess;
     mapping(address => uint256[]) public rewardActiveList;
 
-    constructor(address _operator) public {
+    /**
+     * @param _operator   Contract operator is Booster
+     * @param _crv        CRV token address
+     */
+    constructor(address _operator, address _crv) public {
         operator = _operator;
+        crv = _crv;
     }
 
     //Get active count function
@@ -73,7 +86,9 @@ contract RewardFactory {
         rewardAccess[_stash] = _status;
     }
 
-    //Create a Managed Reward Pool to handle distribution of all crv mined in a pool
+    /**
+     * @notice Create a Managed Reward Pool to handle distribution of all crv mined in a pool
+     */
     function CreateCrvRewards(uint256 _pid, address _depositToken) external returns (address) {
         require(msg.sender == operator, "!auth");
 
@@ -83,8 +98,10 @@ contract RewardFactory {
         return address(rewardPool);
     }
 
-    //create a virtual balance reward pool that mimicks the balance of a pool's main reward contract
-    //used for extra incentive tokens(ex. snx) as well as vecrv fees
+    /**
+     * @notice  Create a virtual balance reward pool that mimics the balance of a pool's main reward contract
+     *          used for extra incentive tokens(ex. snx) as well as vecrv fees
+     */
     function CreateTokenRewards(address _token, address _mainRewards, address _operator) external returns (address) {
         require(msg.sender == operator || rewardAccess[msg.sender] == true, "!auth");
 

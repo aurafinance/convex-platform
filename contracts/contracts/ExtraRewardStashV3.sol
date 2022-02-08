@@ -9,17 +9,25 @@ import "@openzeppelin/contracts-0.6/utils/Address.sol";
 import "@openzeppelin/contracts-0.6/token/ERC20/SafeERC20.sol";
 
 
-//Stash v3: support for curve gauge reward redirect
-//v3.1: support for arbitrary token rewards outside of gauge rewards
-//      add reward hook to pull rewards during claims
-//v3.2: move constuctor to init function for proxy creation
-
+/**
+ * @title   ExtraRewardStashV3
+ * @author  ConvexFinance
+ * @notice  ExtraRewardStash for pools added to the Booster to handle extra rewards
+ *          that aren't CRV that can be claimed from a gauge.
+ *          - v3.0: Support for curve gauge reward redirect
+ *            The Booster contract has a function called setGaugeRedirect. This function calls set_rewards_receiver
+ *            On the Curve Guage. This tells the Gauge where to send rewards. The Booster crafts the calldata for this
+ *            transaction and then calls execute on the VoterProxy which executes this transaction on the Curve Gauge
+ *          - v3.1: Support for arbitrary token rewards outside of gauge rewards add 
+ *            reward hook to pull rewards during claims
+ *          - v3.2: Move constuctor to init function for proxy creation
+ */
 contract ExtraRewardStashV3 {
     using SafeERC20 for IERC20;
     using Address for address;
     using SafeMath for uint256;
 
-    address public constant crv = address(0xD533a949740bb3306d119CC777fa900bA034cd52);
+    address public immutable crv;
     uint256 private constant maxRewards = 8;
 
     uint256 public pid;
@@ -43,10 +51,21 @@ contract ExtraRewardStashV3 {
 
     //address to call for reward pulls
     address public rewardHook;
-
-    constructor() public {
+  
+    /**
+     * @param _crv CRV token address
+     */
+    constructor(address _crv) public {
+      crv = _crv;
     }
 
+    /**
+     * @param _pid        Pool ID
+     * @param _operator   Operator (Booster)
+     * @param _staker     Staker (VoterProxy)
+     * @param _gauge      Gauge
+     * @param _rFactory   Reward factory
+     */
     function initialize(uint256 _pid, address _operator, address _staker, address _gauge, address _rFactory) external {
         require(gauge == address(0),"!init");
         pid = _pid;
@@ -64,7 +83,16 @@ contract ExtraRewardStashV3 {
         return tokenList.length;
     }
 
-    //try claiming if there are reward tokens registered
+    /**
+     * @notice  Claim rewards from the gauge
+     * @dev     The Stash's claimRewards function calls claimRewards on the Booster contract
+     *          which calls claimRewards on the VoterProxy which calls claim_rewards on the gauge
+     *          If a RewardHook is set onRewardClaim is also called on that
+     *          Called by Booster earmarkRewards
+     *          Guage rewards are sent directly to this stash even though the Curve method claim_rewards
+     *          is being called by the VoterProxy. This is because Curves guages have the ability to redirect
+     *          rewards to somewhere other than msg.sender. This is setup in Booster setGaugeRedirect
+     */
     function claimRewards() external returns (bool) {
         require(msg.sender == operator, "!operator");
 
@@ -121,7 +149,11 @@ contract ExtraRewardStashV3 {
     }
 
 
-    //replace a token on token list
+    /**
+     * @notice  Add a reward token to the token list so it can be claimed
+     * @dev     For each token that is added as a claimable reward a VirtualRewardsPool
+     *          is deployed to handle virtual distribution of tokens 
+     */
     function setToken(address _token) internal {
         TokenInfo storage t = tokenInfo[_token];
 
@@ -154,7 +186,12 @@ contract ExtraRewardStashV3 {
         return true;
     }
 
-    //send all extra rewards to their reward contracts
+    /**
+     * @notice  Distribute rewards
+     * @dev     Send all CRV to the Booster contract and send all extra token
+     *          rewards to the rewardContract VirtualRewardsPool
+     *          Called by Booster earmarkRewards
+     */
     function processStash() external returns(bool){
         require(msg.sender == operator, "!operator");
 

@@ -37,26 +37,31 @@ interface ISwapExchange {
     ) external returns (uint256);
 }
 
-//Claim zap to bundle various reward claims
-//v2:
-// - change exchange to use curve pool
-// - add getReward(address,token) type
-// - add option to lock cvx
-// - add option use all funds in wallet
+/**
+ * @title   ClaimZap
+ * @author  ConvexFinance
+ * @notice  Claim zap to bundle various reward claims
+ * @dev     Claims from all pools, and stakes cvxCrv and CVX if wanted.
+ *          v2:
+ *           - change exchange to use curve pool
+ *           - add getReward(address,token) type
+ *           - add option to lock cvx
+ *           - add option use all funds in wallet
+ */
 contract ClaimZap{
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
-    address public constant crv = address(0xD533a949740bb3306d119CC777fa900bA034cd52);
-    address public constant cvx = address(0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B);
-    address public constant cvxCrv = address(0x62B9c7356A2Dc64a1969e19C23e4f579F9810Aa7);
-    address public constant crvDeposit = address(0x8014595F2AB54cD7c604B00E9fb932176fDc86Ae);
-    address public constant cvxCrvRewards = address(0x3Fe65692bfCD0e6CF84cB1E7d24108E434A7587e);
-    address public constant cvxRewards = address(0xCF50b810E57Ac33B91dCF525C6ddd9881B139332);
+    address public immutable crv;
+    address public immutable cvx;
+    address public immutable cvxCrv;
+    address public immutable crvDeposit;
+    address public immutable cvxCrvRewards;
+    address public immutable cvxRewards;
 
-    address public constant exchange = address(0x9D0464996170c6B9e75eED71c68B99dDEDf279e8);//curve
+    address public immutable exchange;
 
-    address public constant locker = address(0xD18140b4B819b895A3dba5442F959fA44994AF50);
+    address public immutable locker;
 
     address public immutable owner;
 
@@ -71,7 +76,34 @@ contract ClaimZap{
         LockCvx //128
     }
 
-    constructor() public {
+    /**
+     * @param _crv           CRV token (0xD533a949740bb3306d119CC777fa900bA034cd52);
+     * @param _cvx           CVX token (0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B);
+     * @param _cvxCrv        cvxCRV token (0x62B9c7356A2Dc64a1969e19C23e4f579F9810Aa7);
+     * @param _crvDeposit    crvDeposit (0x8014595F2AB54cD7c604B00E9fb932176fDc86Ae);
+     * @param _cvxCrvRewards cvxCrvRewards (0x3Fe65692bfCD0e6CF84cB1E7d24108E434A7587e);
+     * @param _cvxRewards    cvxRewards (0xCF50b810E57Ac33B91dCF525C6ddd9881B139332);
+     * @param _exchange      Used to convert CRV to cvxCRV exchange (0x9D0464996170c6B9e75eED71c68B99dDEDf279e8);//curve
+     * @param _locker        vlCVX (0xD18140b4B819b895A3dba5442F959fA44994AF50);
+     */
+    constructor(
+        address _crv,
+        address _cvx,
+        address _cvxCrv,
+        address _crvDeposit,
+        address _cvxCrvRewards,
+        address _cvxRewards,
+        address _exchange,
+        address _locker
+    ) public {
+        crv = _crv;
+        cvx = _cvx;
+        cvxCrv = _cvxCrv;
+        crvDeposit = _crvDeposit;
+        cvxCrvRewards = _cvxCrvRewards;
+        cvxRewards = _cvxRewards;
+        exchange = _exchange;
+        locker = _locker;
         owner = msg.sender;
     }
 
@@ -173,7 +205,8 @@ contract ClaimZap{
                 //pull crv
                 IERC20(crv).safeTransferFrom(msg.sender, address(this), crvBalance);
                 if(minAmountOut > 0){
-                    //swap
+                    //swaps from crv to cvxCrv on curve pool
+                    // TODO - change/generalise
                     ISwapExchange(exchange).exchange(0,1,crvBalance,minAmountOut);
                 }else{
                     //deposit

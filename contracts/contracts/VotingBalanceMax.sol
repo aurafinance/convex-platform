@@ -7,18 +7,39 @@ import "./interfaces/ILockedCvx.sol";
 import "./interfaces/IVotingEligibility.sol";
 import "@openzeppelin/contracts-0.6/math/SafeMath.sol";
 
+/**
+ * @title    VotingBalanceMax
+ * @author   ConvexFinance
+ * @notice   Retrieve a users voting balance based on their amount of locked CVX
+ * @dev      Calls CvxLocker contract to get locked balance for a user
+ *           upgrade of the original VotingBalance contract to separate allow list
+ *           and block list and get pending balances
+ */
 contract VotingBalanceMax{
     using SafeMath for uint256;
 
-    address public constant locker = address(0xD18140b4B819b895A3dba5442F959fA44994AF50);
+    address public immutable locker;
     address public immutable eligiblelist;
     uint256 public constant rewardsDuration = 86400 * 7;
     uint256 public constant lockDuration = rewardsDuration * 17;
 
-    constructor(address _eligiblelist) public {
+    /** 
+     * @param _eligiblelist     Address of VotingEligibility contract used for allow list and block list
+     * @param _locker           CvxLocker contract address
+     */
+    constructor(
+      address _eligiblelist, 
+      address _locker 
+    ) public {
         eligiblelist = _eligiblelist;
+        locker = _locker;
     }
 
+    /**
+     * @notice  Get the voting balance of an address
+     * @dev     Looks up locked CVX balance of address from CvxLocker
+     * @param _account Address to lookup balance of
+     */
     function balanceOf(address _account) external view returns(uint256){
 
         //check eligibility list
@@ -42,6 +63,11 @@ contract VotingBalanceMax{
         return max(balanceAtPrev, currentBalance);
     }
 
+    /**
+     * @notice  Get the pending voting balance of an address
+     * @dev     Calculates the pending balance for the active epoch  
+     * @param _account Address to lookup balance of
+     */
     function pendingBalanceOf(address _account) external view returns(uint256){
 
         //check eligibility list
@@ -67,7 +93,7 @@ contract VotingBalanceMax{
     function max(uint256 a, uint256 b) internal pure returns (uint256) {
         return a >= b ? a : b;
     }
-
+  
     function totalSupply() view external returns(uint256){
         return ILockedCvx(locker).totalSupply();
     }

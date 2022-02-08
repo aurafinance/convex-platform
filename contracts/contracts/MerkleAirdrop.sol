@@ -10,9 +10,6 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND (express or implied).
  */
 /*
-Changes by Convex
-- update to solidity 0.6.12
-- allow different types of claiming(transfer, mint, generic interaction with seperate contract)
 */
 
 pragma solidity 0.6.12;
@@ -22,6 +19,15 @@ import "@openzeppelin/contracts-0.6/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts-0.6/utils/Address.sol";
 import "@openzeppelin/contracts-0.6/token/ERC20/SafeERC20.sol";
 
+/**
+ * @title   MerkleAirdop
+ * @author  Smartz and ConvexFinance
+ * @notice  MerkleAirdop... simples
+ * @dev     Variant of https://github.com/smartzplatform/constructor-eth-merkle-airdrop/blob/master/contracts/MerkleAirdrop.sol
+ *          Changes by Convex
+ *          - Update to solidity 0.6.12
+ *          - Allow different types of claiming(transfer, mint, generic interaction with seperate contract)
+ */
 contract MerkleAirdrop {
     using SafeERC20 for IERC20;
     using Address for address;

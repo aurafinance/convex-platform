@@ -10,24 +10,41 @@ import "@openzeppelin/contracts-0.6/utils/Address.sol";
 import "@openzeppelin/contracts-0.6/token/ERC20/SafeERC20.sol";
 
 
-//Basic functionality to integrate with locking cvx
+/**
+ * @title   BasicCvxHolder
+ * @author  ConvexFinance
+ * @notice  Basic functionality to integrate with locking cvx
+ * @dev     This is an example contract to be used for vlCVX integration contracts.
+ */
 contract BasicCvxHolder{
     using SafeERC20 for IERC20;
     using Address for address;
 
 
-    address public constant cvxCrv = address(0x62B9c7356A2Dc64a1969e19C23e4f579F9810Aa7);
-    address public constant cvxcrvStaking = address(0x3Fe65692bfCD0e6CF84cB1E7d24108E434A7587e);
-    address public constant cvx = address(0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B);
-    address public constant crv = address(0xD533a949740bb3306d119CC777fa900bA034cd52);
-    address public constant crvDeposit = address(0x8014595F2AB54cD7c604B00E9fb932176fDc86Ae);
+    address public immutable cvxCrv;
+    address public immutable cvxcrvStaking;
+    address public immutable cvx;
+    address public immutable crv;
+    address public immutable crvDeposit;
 
     address public operator;
     ILockedCvx public immutable cvxlocker;
 
-    constructor(address _cvxlocker) public {
-        cvxlocker = ILockedCvx(_cvxlocker);
+    constructor(
+        address _cvxlocker,
+        address _cvxCrv,
+        address _cvxcrvStaking,
+        address _cvx,
+        address _crv,
+        address _crvDeposit
+    ) public {
         operator = msg.sender;
+        cvxlocker = ILockedCvx(_cvxlocker);
+        cvxCrv = _cvxCrv;
+        cvxcrvStaking = _cvxcrvStaking;
+        cvx = _cvx;
+        crv = _crv;
+        crvDeposit = _crvDeposit;
     }
 
     function setApprovals() external {

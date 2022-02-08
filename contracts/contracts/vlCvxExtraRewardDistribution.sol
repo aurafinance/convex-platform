@@ -6,38 +6,51 @@ import "./interfaces/BoringMath.sol";
 import "@openzeppelin/contracts-0.6/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts-0.6/token/ERC20/SafeERC20.sol";
 
-
-//Distribute various rewards to locked cvx holders
-// - Rewards added are assigned to the previous epoch (it was the previous epoch lockers who deserve today's rewards)
-// - As soon as claiming for a token at an epoch is eligibe, no more tokens should be allowed to be added
-// - To allow multiple txs to add to the same token, rewards added during the current epoch (and assigned to previous) will not
-//     be claimable until the beginning of the next epoch. The "reward assigning phase" must be complete first
-//example: 
-//Current epoch: 10
-//During this week all addReward() calls are assigned to users in epoch 9
-//Users who were locked in epoch 9 can claim once epoch 11 begins
-// -> epoch 10 is the assigning phase for epoch 9, thus we must wait until 10 is complete before claiming 9
+/**
+ * @title   vlCvxExtraRewardDistribution
+ * @author  ConvexFinance
+ * @notice  Distribute various rewards to locked cvx holders (vlCVX)
+ *          - Rewards added are assigned to the previous epoch (it was the previous epoch lockers who deserve today's rewards)
+ *          - As soon as claiming for a token at an epoch is eligibe, no more tokens should be allowed to be added
+ *          - To allow multiple txs to add to the same token, rewards added during the current epoch (and assigned to previous) will not
+ *            be claimable until the beginning of the next epoch. The "reward assigning phase" must be complete first
+ *          example: 
+ *          - Current epoch: 10
+ *          - During this week all addReward() calls are assigned to users in epoch 9
+ *          - Users who were locked in epoch 9 can claim once epoch 11 begins
+ *          - Epoch 10 is the assigning phase for epoch 9, thus we must wait until 10 is complete before claiming 9
+ */
 contract vlCvxExtraRewardDistribution {
     using SafeERC20
     for IERC20;
     using BoringMath
     for uint256;
 
-    ILockedCvx public constant cvxlocker = ILockedCvx(0xD18140b4B819b895A3dba5442F959fA44994AF50);
+    ILockedCvx public immutable cvxlocker;
     uint256 public constant rewardsDuration = 86400 * 7;
 
     mapping(address => mapping(uint256 => uint256)) public rewardData; // token -> epoch -> amount
     mapping(address => uint256[]) public rewardEpochs; // token -> epochList
     mapping(address => mapping(address => uint256)) public userClaims; //token -> account -> last claimed epoch index
 
-    constructor() public {}
+    /**
+     * @param _cvxlocker        CvxLocker contract
+     */
+    constructor(ILockedCvx _cvxlocker) public {
+      cvxlocker = _cvxlocker;
+    }
 
 
     function rewardEpochsCount(address _token) external view returns(uint256) {
         return rewardEpochs[_token].length;
     }
 
-    //add a reward to a specific epoch
+    /**
+     * @notice Add reward token to a specific epoch
+     * @param _token    Reward token address
+     * @param _amount   Amount of reward tokens to add
+     * @param _epoch    Which epoch to add to (must be less than the previous epoch)
+     */
     function addRewardToEpoch(address _token, uint256 _amount, uint256 _epoch) external {
         //checkpoint locker
         cvxlocker.checkpointEpoch();
@@ -57,7 +70,11 @@ contract vlCvxExtraRewardDistribution {
         _addReward(_token, _amount, _epoch);
     }
 
-    //add a reward to the current epoch. can be called multiple times for the same reward token
+    /**
+     * @notice Add a reward to the current epoch. can be called multiple times for the same reward token
+     * @param _token    Reward token address
+     * @param _amount   Amount of reward token
+     */
     function addReward(address _token, uint256 _amount) external {
         //checkpoint locker
         cvxlocker.checkpointEpoch();
@@ -68,6 +85,13 @@ contract vlCvxExtraRewardDistribution {
         _addReward(_token, _amount, prevEpoch);
     }
 
+    /**
+     * @notice  Transfer reward tokens from sender to contract for vlCVX holders
+     * @dev     Add reward token for specific epoch
+     * @param _token    Reward token address
+     * @param _amount   Amount of reward tokens
+     * @param _epoch    Epoch to add tokens to
+     */
     function _addReward(address _token, uint256 _amount, uint256 _epoch) internal {
         //convert to reward per token
         uint256 supply = cvxlocker.totalSupplyAtEpoch(_epoch);
@@ -87,18 +111,27 @@ contract vlCvxExtraRewardDistribution {
         emit RewardAdded(_token, _epoch, _amount);
     }
 
-    //get claimable rewards for a specific token
+    /**
+     * @notice Get claimable rewards (rewardToken) for vlCVX holder
+     */
     function claimableRewards(address _account, address _token) external view returns(uint256) {
         (uint256 rewards,) = _allClaimableRewards(_account, _token);
         return rewards;
     }
 
-    //get claimable rewards for a token at a specific epoch
+    /**
+     * @notice Get claimable rewards for a token at a specific epoch
+     */
     function claimableRewardsAtEpoch(address _account, address _token, uint256 _epoch) external view returns(uint256) {
         return _claimableRewards(_account, _token, _epoch);
     }
 
-    //get all claimable rewards
+    /**
+     * @notice  Get all claimable rewards by looping through each epoch starting with the latest
+     *          saved epoch the user last claimed from
+     * @param _account  Address of vlCVX holder
+     * @param _token    Reward token
+     */
     function _allClaimableRewards(address _account, address _token) internal view returns(uint256,uint256) {
         uint256 epochIndex = userClaims[_token][_account];
         uint256 prevEpoch = cvxlocker.epochCount() - 2;
@@ -121,7 +154,9 @@ contract vlCvxExtraRewardDistribution {
         return balance.mul(rewardData[_token][_epoch]).div(1e20);
     }
 
-    //claim rewards for a specific token at a specific epoch
+    /**
+     * @notice Claim rewards for a specific token at a specific epoch
+     */
     function getReward(address _account, address _token) public {
         //get claimable tokens
         (uint256 claimableTokens, uint256 index) = _allClaimableRewards(_account, _token);
@@ -145,12 +180,15 @@ contract vlCvxExtraRewardDistribution {
         }
     }
 
-    //Because claims cycle through all periods that a specific reward was given
-    //there becomes a situation where, for example, a new user could lock
-    //2 years from now and try to claim a token that was given out every week prior.
-    //This would result in a 2mil gas checkpoint.(about 20k gas * 52 weeks * 2 years)
-    //
-    //allow a user to set their claimed index forward without claiming rewards
+    /**
+     * @notice  Allow a user to set their claimed index forward without claiming rewards
+     *          Because claims cycle through all periods that a specific reward was given
+     *          there becomes a situation where, for example, a new user could lock
+     *          2 years from now and try to claim a token that was given out every week prior.
+     *          This would result in a 2mil gas checkpoint.(about 20k gas * 52 weeks * 2 years)
+     * @param _token  Reward token to forfeit
+     * @param _index  Epoch index to forfeit from
+     */
     function forfeitRewards(address _token, uint256 _index) external {
         require(_index > 0 && _index < rewardEpochs[_token].length-1, "!past");
         require(_index >= userClaims[_token][msg.sender], "already claimed");

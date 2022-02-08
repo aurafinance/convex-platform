@@ -9,23 +9,35 @@ import "@openzeppelin/contracts-0.6/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts-0.6/token/ERC20/ERC20.sol";
 
 
+/**
+ * @title   ConvexToken
+ * @author  ConvexFinance
+ * @notice  Basically an ERC20 with minting functionality operated by the "operator" of the VoterProxy (Booster).
+ * @dev     The minting schedule is based on the amount of CRV earned through staking and is
+ *          distirbuted along a supply curve (cliffs etc).
+ */
 contract ConvexToken is ERC20{
     using SafeERC20 for IERC20;
     using Address for address;
     using SafeMath for uint256;
 
     address public operator;
-    address public vecrvProxy;
+    address public immutable vecrvProxy;
 
-    uint256 public maxSupply = 100 * 1000000 * 1e18; //100mil
-    uint256 public totalCliffs = 1000;
-    uint256 public reductionPerCliff;
+    uint256 public constant maxSupply = 100 * 1000000 * 1e18; //100mil
+    uint256 public constant totalCliffs = 1000;
+    uint256 public immutable reductionPerCliff;
 
-    constructor(address _proxy)
+    /**
+     * @param _proxy        CVX VoterProxy
+     * @param _nameArg      Token name
+     * @param _symbolArg    Token symbol
+     */
+    constructor(address _proxy, string memory _nameArg, string memory _symbolArg)
         public
         ERC20(
-            "Convex Token",
-            "CVX"
+            _nameArg,
+            _symbolArg
         )
     {
         operator = msg.sender;
@@ -33,11 +45,17 @@ contract ConvexToken is ERC20{
         reductionPerCliff = maxSupply.div(totalCliffs);
     }
 
-    //get current operator off proxy incase there was a change
+
+    /**
+     * @dev This can be called if the operator of the voterProxy somehow changes.
+     */
     function updateOperator() public {
         operator = IStaker(vecrvProxy).operator();
     }
     
+    /**
+     * @dev Mints CVX to a given user based on current supply and schedule.
+     */
     function mint(address _to, uint256 _amount) external {
         if(msg.sender != operator){
             //dont error just return. if a shutdown happens, rewards on old system

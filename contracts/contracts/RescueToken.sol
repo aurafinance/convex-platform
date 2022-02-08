@@ -8,17 +8,26 @@ import "@openzeppelin/contracts-0.6/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts-0.6/token/ERC20/ERC20.sol";
 
 
-//Dummy token to use for erc20 rescue
+/**
+ * @title   RescueToken
+ * @author  ConvexFinance
+ * @notice  Dummy token to use for erc20 rescue. A private pool gets added
+ *          to the booster that takes this dummy token and facilitates rescuing
+ *          tokens from the VoterProxy see ExtraRewardStashTokenRescue for more details
+ */
 contract RescueToken is ERC20 {
     using SafeERC20 for IERC20;
     using Address for address;
     using SafeMath for uint256;
 
-    constructor()
+    /**
+     * @param _symbolArg e.g. cvxRT
+     */
+    constructor(string memory _symbolArg)
         public
         ERC20(
             "Recue Token",
-            "cvxRT"
+            _symbolArg
         ){
     }
     

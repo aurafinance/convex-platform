@@ -8,13 +8,21 @@ import "@openzeppelin/contracts-0.6/utils/Address.sol";
 import "@openzeppelin/contracts-0.6/token/ERC20/SafeERC20.sol";
 
 
+/**
+ * @title   CrvDepositor
+ * @author  ConvexFinance
+ * @notice  This is the entry point for CRV > cvxCRV wrapping. It accepts CRV, sends to 'staler'
+ *          for depositing into Curves VotingEscrow, and then mints cvxCRV at 1:1 via the 'minter' (cCrv) minus
+ *          the lockIncentive (initially 1%) which is used to basically compensate users who call the `lock` function on Curves
+ *          system (larger depositors would likely want to lock).
+ */
 contract CrvDepositor{
     using SafeERC20 for IERC20;
     using Address for address;
     using SafeMath for uint256;
 
-    address public constant crv = address(0xD533a949740bb3306d119CC777fa900bA034cd52);
-    address public constant escrow = address(0x5f3b5DfEb7B28CDbD7FAba78963EE202a494e2A2);
+    address public immutable crv;
+    address public immutable escrow;
     uint256 private constant MAXTIME = 4 * 364 * 86400;
     uint256 private constant WEEK = 7 * 86400;
 
@@ -27,9 +35,22 @@ contract CrvDepositor{
     uint256 public incentiveCrv = 0;
     uint256 public unlockTime;
 
-    constructor(address _staker, address _minter) public {
+    /**
+     * @param _staker   CVX VoterProxy (0x989AEb4d175e16225E39E87d0D97A3360524AD80)
+     * @param _minter   cvxCRV token (0x62B9c7356A2Dc64a1969e19C23e4f579F9810Aa7)
+     * @param _crv      CRV token (0xD533a949740bb3306d119CC777fa900bA034cd52)
+     * @param _escrow   CRV VotingEscrow (0x5f3b5DfEb7B28CDbD7FAba78963EE202a494e2A2)
+     */
+    constructor(
+        address _staker,
+        address _minter,
+        address _crv,
+        address _escrow
+    ) public {
         staker = _staker;
         minter = _minter;
+        crv = _crv;
+        escrow = _escrow;
         feeManager = msg.sender;
     }
 
@@ -46,6 +67,9 @@ contract CrvDepositor{
        }
     }
 
+    /**
+     * @notice Called once to deposit the balance of CRV in this contract to the VotingEscrow
+     */
     function initialLock() external{
         require(msg.sender==feeManager, "!auth");
 
@@ -90,6 +114,9 @@ contract CrvDepositor{
         }
     }
 
+    /**
+     * @notice Locks the balance of CRV, and gives out an incentive to the caller
+     */
     function lockCurve() external {
         _lockCurve();
 
@@ -100,10 +127,15 @@ contract CrvDepositor{
         }
     }
 
-    //deposit crv for cvxCrv
-    //can locking immediately or defer locking to someone else by paying a fee.
-    //while users can choose to lock or defer, this is mostly in place so that
-    //the cvx reward contract isnt costly to claim rewards
+    /**
+     * @notice Deposit crv for cvxCrv
+     * @dev    Can locking immediately or defer locking to someone else by paying a fee.
+     *         while users can choose to lock or defer, this is mostly in place so that
+     *         the cvx reward contract isnt costly to claim rewards.
+     * @param _amount        Units of CRV to deposit
+     * @param _lock          Lock now? or pay ~1% to the locker
+     * @param _stakeAddress  Stake in cvxCrv staking?
+     */
     function deposit(uint256 _amount, bool _lock, address _stakeAddress) public {
         require(_amount > 0,"!>0");
         

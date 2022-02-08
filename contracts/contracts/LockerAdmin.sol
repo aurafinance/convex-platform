@@ -4,16 +4,23 @@ pragma solidity 0.6.12;
 import "./interfaces/ILockedCvx.sol";
 import "@openzeppelin/contracts-0.6/token/ERC20/IERC20.sol";
 
-/*
-Admin proxy for locker contract to fix require checks and seal off staking proxy changes
-*/
+/** 
+ * @title   LockerAdmin
+ * @author  ConvexFinance
+ * @notice  Admin proxy for locker contract to fix require checks and seal off staking proxy changes
+ */
 contract LockerAdmin{
 
-    ILockedCvx public constant locker = ILockedCvx(0xD18140b4B819b895A3dba5442F959fA44994AF50);
+    ILockedCvx public immutable locker; 
     address public operator;
-
-    constructor() public {
-        operator = address(0xa3C5A1e09150B75ff251c1a7815A07182c3de2FB);
+  
+    /**
+     * @param _locker   CvxLocker contract
+     * @param _operator Operator e.g multisig (0xa3C5A1e09150B75ff251c1a7815A07182c3de2FB0
+     */
+    constructor(ILockedCvx _locker, address _operator) public {
+        locker = _locker;
+        operator = _operator;
     }
 
     modifier onlyOwner() {
