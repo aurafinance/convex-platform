@@ -23,6 +23,8 @@ interface ICurveVoteEscrow {
 
 interface IWalletChecker {
     function check(address) external view returns (bool);
+    function approveWallet(address) external;
+    function dao() external view returns (address);
 }
 
 interface IVoting{
