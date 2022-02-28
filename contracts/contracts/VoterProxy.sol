@@ -31,6 +31,9 @@ contract CurveVoterProxy {
     
     mapping (address => bool) private stashPool;
     mapping (address => bool) private protectedTokens;
+    mapping (bytes32 => bool) private votes;
+
+    bytes4 constant internal EIP1271_MAGIC_VALUE = 0x1626ba7e;
 
     /**
      * @param _mintr            CRV minter
@@ -90,6 +93,32 @@ contract CurveVoterProxy {
         return true;
     }
 
+    /**
+     * @notice Save a vote hash so when snapshot.org asks this contract if 
+     *          a vote signature is valid we are able to check for a valid hash
+     *          and return the appropriate response inline with EIP 1721
+     * @param hash Hash of vote signature that was sent to snapshot.org
+     */
+    function setVote(bytes32 hash) external {
+        require(msg.sender == owner, "!auth");
+        votes[hash] = true;
+    }
+
+    /**
+     * @notice  Verifies that the hash is valid
+     * @dev     Snapshot Hub will call this function when a vote is submitted using
+     *          snapshot.js on behalf of this contract. Snapshot Hub will call this
+     *          function with the hash and the signature of the vote that was cast.
+     * @param hash Hash of the message that was sent to Snapshot Hub to cast a vote
+     * @return EIP1271 magic value if the signature is value 
+     */
+    function isValidSignature(bytes32 hash, bytes memory) public view returns (bytes4) {
+        if(votes[hash]) {
+          return EIP1271_MAGIC_VALUE;
+        } else {
+          return 0xffffffff;
+        }  
+    }
 
     /**
      * @notice  Deposit tokens into the Curve Gauge
