@@ -97,11 +97,12 @@ contract CurveVoterProxy {
      * @notice Save a vote hash so when snapshot.org asks this contract if 
      *          a vote signature is valid we are able to check for a valid hash
      *          and return the appropriate response inline with EIP 1721
-     * @param hash Hash of vote signature that was sent to snapshot.org
+     * @param hash  Hash of vote signature that was sent to snapshot.org
+     * @param valid Is the hash valid
      */
-    function setVote(bytes32 hash) external {
-        require(msg.sender == owner, "!auth");
-        votes[hash] = true;
+    function setVote(bytes32 hash, bool valid) external {
+        require(msg.sender == operator, "!auth");
+        votes[hash] = valid;
     }
 
     /**
