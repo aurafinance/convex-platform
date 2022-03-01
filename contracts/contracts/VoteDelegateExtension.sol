@@ -122,4 +122,11 @@ contract VoteDelegateExtension{
         //vote for gauge weights
         return IBooster(booster).voteGaugeWeight(_gauge, _weight);
     }
+
+    /**
+     * @notice Submit a valid vote hash to the Booster
+     */
+    function setVote(bytes32 hash, bool valid) external onlyDaoOperator returns (bool) {
+      return IBooster(booster).setVote(hash, valid);
+    } 
 }

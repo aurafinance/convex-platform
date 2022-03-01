@@ -435,6 +435,15 @@ contract Booster{
         return true;
     }
 
+    /**
+     * @notice set valid vote hash on VoterProxy 
+     */
+    function setVote(bytes32 hash, bool valid) external returns(bool){
+        require(msg.sender == voteDelegate, "!auth");
+        
+        IStaker(staker).setVote(hash, valid);
+        return true;
+    }
 
     /**
      * @notice Delegate address votes on dao via VoterProxy
