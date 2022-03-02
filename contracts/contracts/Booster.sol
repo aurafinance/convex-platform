@@ -550,7 +550,6 @@ contract Booster{
 
             //send stakers's share of crv to reward contract
             IERC20(crv).safeTransfer(stakerRewards, _stakerIncentive);
-            IRewards(stakerRewards).queueNewRewards(_stakerIncentive);
         }
     }
 
