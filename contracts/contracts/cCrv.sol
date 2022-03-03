@@ -14,7 +14,7 @@ import "@openzeppelin/contracts-0.6/token/ERC20/ERC20.sol";
  * @author  ConvexFinance
  * @notice  Dumb ERC20 token that allows the operator (crvDepositor) to mint and burn tokens
  */
-contract cvxCrvToken is ERC20 {
+contract cvxCrvToken is ERC20, ITokenMinter {
     using SafeERC20 for IERC20;
     using Address for address;
     using SafeMath for uint256;
@@ -43,7 +43,7 @@ contract cvxCrvToken is ERC20 {
     /**
      * @notice Allows the crvDepositor to mint
      */
-    function mint(address _to, uint256 _amount) external {
+    function mint(address _to, uint256 _amount) external override {
         require(msg.sender == operator, "!authorized");
         
         _mint(_to, _amount);
@@ -52,7 +52,7 @@ contract cvxCrvToken is ERC20 {
     /**
      * @notice Allows the crvDepositor to burn
      */
-    function burn(address _from, uint256 _amount) external {
+    function burn(address _from, uint256 _amount) external override {
         require(msg.sender == operator, "!authorized");
         
         _burn(_from, _amount);

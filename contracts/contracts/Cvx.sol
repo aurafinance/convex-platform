@@ -16,7 +16,7 @@ import "@openzeppelin/contracts-0.6/token/ERC20/ERC20.sol";
  * @dev     The minting schedule is based on the amount of CRV earned through staking and is
  *          distirbuted along a supply curve (cliffs etc).
  */
-contract ConvexToken is ERC20{
+contract ConvexToken is ERC20, ITokenMinter{
     using SafeERC20 for IERC20;
     using Address for address;
     using SafeMath for uint256;
@@ -56,7 +56,7 @@ contract ConvexToken is ERC20{
     /**
      * @dev Mints CVX to a given user based on current supply and schedule.
      */
-    function mint(address _to, uint256 _amount) external {
+    function mint(address _to, uint256 _amount) external override {
         if(msg.sender != operator){
             //dont error just return. if a shutdown happens, rewards on old system
             //can still be claimed, just wont mint cvx
@@ -93,6 +93,10 @@ contract ConvexToken is ERC20{
             //mint
             _mint(_to, _amount);
         }
+    }
+
+    function burn(address, uint256) external override {
+        revert();
     }
 
 }

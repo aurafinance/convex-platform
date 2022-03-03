@@ -14,7 +14,7 @@ import "@openzeppelin/contracts-0.6/token/ERC20/ERC20.sol";
  * @author  ConvexFinance
  * @notice  Simply creates a token that can be minted and burned from the operator
  */
-contract DepositToken is ERC20 {
+contract DepositToken is ERC20, ITokenMinter {
     using SafeERC20 for IERC20;
     using Address for address;
     using SafeMath for uint256;
@@ -44,13 +44,13 @@ contract DepositToken is ERC20 {
         operator =  _operator;
     }
     
-    function mint(address _to, uint256 _amount) external {
+    function mint(address _to, uint256 _amount) external override {
         require(msg.sender == operator, "!authorized");
         
         _mint(_to, _amount);
     }
 
-    function burn(address _from, uint256 _amount) external {
+    function burn(address _from, uint256 _amount) external override {
         require(msg.sender == operator, "!authorized");
         
         _burn(_from, _amount);

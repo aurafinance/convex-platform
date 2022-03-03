@@ -14,7 +14,7 @@ import "@openzeppelin/contracts-0.6/token/ERC20/SafeERC20.sol";
  * @dev     They say all paths lead to Rome, and the cvxBooster is no different. This is where it all goes down.
  *          It is responsible for tracking all the pools, it collects rewards from all pools and redirects it.
  */
-contract Booster{
+contract Booster is IPools {
     using SafeERC20 for IERC20;
     using Address for address;
     using SafeMath for uint256;
@@ -61,13 +61,27 @@ contract Booster{
     }
 
     //index(pid) -> pool
-    PoolInfo[] public poolInfo;
-    mapping(address => bool) public gaugeMap;
+    PoolInfo[] public override poolInfo;
+    mapping(address => bool) public override gaugeMap;
 
     event Deposited(address indexed user, uint256 indexed poolid, uint256 amount);
     event Withdrawn(address indexed user, uint256 indexed poolid, uint256 amount);
 
-    /**
+    event PoolAdded(address lpToken, address gauge, address token, address rewardPool, address stash, uint256 pid);
+    event PoolShutdown(uint256 poolId);
+
+    event OwnerUpdated(address newOwner);
+    event FeeManagerUpdated(address newFeeManager);
+    event PoolManagerUpdated(address newPoolManager);
+    event FactoriesUpdated(address rewardFactory, address stashFactory, address tokenFactory);
+    event ArbitratorUpdated(address newArbitrator);
+    event VoteDelegateUpdated(address newVoteDelegate);
+    event RewardContractsUpdated(address lockRewards, address stakerRewards);
+    event FeesUpdated(uint256 lockIncentive, uint256 stakerIncentive, uint256 earmarkIncentive, uint256 platformFee);
+    event TreasuryUpdated(address newTreasury);
+    event FeeInfoUpdated(address feeDistro, address lockFees, address feeToken);
+
+/**
      * @dev Constructor doing what constructors do. It is noteworthy that
      *      a lot of basic config is set to 0 - expecting subsequent calls to setFeeInfo etc.
      * @param _staker                 VoterProxy (locks the crv and adds to all gauges)
@@ -87,6 +101,7 @@ contract Booster{
         address _voteOwnership,
         address _voteParameter
     ) public {
+        isShutdown = false;
         staker = _staker;
         minter = _minter;
         crv = _crv;
@@ -103,6 +118,11 @@ contract Booster{
         feeDistro = address(0); //address(0xA464e6DCda8AC41e03616F95f4BC98a13b8922Dc);
         feeToken = address(0); //address(0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490);
         treasury = address(0);
+
+        emit OwnerUpdated(msg.sender);
+        emit VoteDelegateUpdated(msg.sender);
+        emit FeeManagerUpdated(msg.sender);
+        emit PoolManagerUpdated(msg.sender);
     }
 
 
@@ -114,6 +134,8 @@ contract Booster{
     function setOwner(address _owner) external {
         require(msg.sender == owner, "!auth");
         owner = _owner;
+
+        emit OwnerUpdated(_owner);
     }
 
     /**
@@ -122,14 +144,18 @@ contract Booster{
     function setFeeManager(address _feeM) external {
         require(msg.sender == feeManager, "!auth");
         feeManager = _feeM;
+
+        emit FeeManagerUpdated(_feeM);
     }
 
     /**
      * @notice Pool manager is responsible for adding new pools
      */
-    function setPoolManager(address _poolM) external {
+    function setPoolManager(address _poolM) external override {
         require(msg.sender == poolManager, "!auth");
         poolManager = _poolM;
+
+        emit PoolManagerUpdated(_poolM);
     }
 
     /**
@@ -137,18 +163,22 @@ contract Booster{
      */
     function setFactories(address _rfactory, address _sfactory, address _tfactory) external {
         require(msg.sender == owner, "!auth");
-        
+
+        //stash factory should be considered more safe to change
+        //updating may be required to handle new types of gauges
+        stashFactory = _sfactory;
+
         //reward factory only allow this to be called once even if owner
         //removes ability to inject malicious staking contracts
         //token factory can also be immutable
         if(rewardFactory == address(0)){
             rewardFactory = _rfactory;
             tokenFactory = _tfactory;
-        }
 
-        //stash factory should be considered more safe to change
-        //updating may be required to handle new types of gauges
-        stashFactory = _sfactory;
+            emit FactoriesUpdated(_rfactory, _sfactory, _tfactory);
+        } else {
+            emit FactoriesUpdated(address(0), _sfactory, address(0));
+        }
     }
 
     /**
@@ -157,6 +187,8 @@ contract Booster{
     function setArbitrator(address _arb) external {
         require(msg.sender==owner, "!auth");
         rewardArbitrator = _arb;
+
+        emit ArbitratorUpdated(_arb);
     }
 
     /**
@@ -165,6 +197,8 @@ contract Booster{
     function setVoteDelegate(address _voteDelegate) external {
         require(msg.sender==voteDelegate, "!auth");
         voteDelegate = _voteDelegate;
+
+        emit VoteDelegateUpdated(_voteDelegate);
     }
 
     /**
@@ -178,6 +212,7 @@ contract Booster{
         if(lockRewards == address(0)){
             lockRewards = _rewards;
             stakerRewards = _stakerRewards;
+            emit RewardContractsUpdated(_rewards, _stakerRewards);
         }
     }
 
@@ -188,12 +223,17 @@ contract Booster{
     function setFeeInfo() external {
         require(msg.sender==feeManager, "!auth");
         
-        feeDistro = IRegistry(registry).get_address(distributionAddressId);
+        address _feeDistro = IRegistry(registry).get_address(distributionAddressId);
+        feeDistro = _feeDistro;
         address _feeToken = IFeeDistro(feeDistro).token();
         if(feeToken != _feeToken){
             //create a new reward contract for the new token
-            lockFees = IRewardFactory(rewardFactory).CreateTokenRewards(_feeToken,lockRewards,address(this));
+            address _lockFees = IRewardFactory(rewardFactory).CreateTokenRewards(_feeToken, lockRewards, address(this));
+            lockFees = _lockFees;
             feeToken = _feeToken;
+            emit FeeInfoUpdated(_feeDistro, _lockFees, _feeToken);
+        } else {
+            emit FeeInfoUpdated(_feeDistro, address(0), address(0));
         }
     }
 
@@ -219,6 +259,8 @@ contract Booster{
             stakerIncentive = _stakerFees;
             earmarkIncentive = _callerFees;
             platformFee = _platform;
+
+            emit FeesUpdated(_lockFees, _stakerFees, _callerFees, _platform);
         }
     }
 
@@ -228,12 +270,14 @@ contract Booster{
     function setTreasury(address _treasury) external {
         require(msg.sender==feeManager, "!auth");
         treasury = _treasury;
+
+        emit TreasuryUpdated(_treasury);
     }
 
     /// END SETTER SECTION ///
 
 
-    function poolLength() external view returns (uint256) {
+    function poolLength() external view override returns (uint256) {
         return poolInfo.length;
     }
 
@@ -241,7 +285,7 @@ contract Booster{
      * @notice Called by the PoolManager (i.e. PoolManagerProxy) to add a new pool - creates all the required
      *         contracts (DepositToken, RewardPool, Stash) and then adds to the list!
      */
-    function addPool(address _lptoken, address _gauge, uint256 _stashVersion) external returns(bool){
+    function addPool(address _lptoken, address _gauge, uint256 _stashVersion) external override returns(bool){
         require(msg.sender==poolManager && !isShutdown, "!add");
         require(_gauge != address(0) && _lptoken != address(0),"!param");
 
@@ -275,14 +319,21 @@ contract Booster{
             IStaker(staker).setStashAccess(stash,true);
             IRewardFactory(rewardFactory).setAccess(stash,true);
         }
+
+        emit PoolAdded(_lptoken, _gauge, token, newRewardPool, stash, pid);
         return true;
+    }
+
+    //not implemented
+    function forceAddPool(address, address, uint256) external override returns (bool) {
+        revert();
     }
 
     /**
      * @notice Shuts down the pool by withdrawing everything from the gauge to here (can later be
      *         claimed from depositors by using the withdraw fn) and marking it as shut down
      */
-    function shutdownPool(uint256 _pid) external returns(bool){
+    function shutdownPool(uint256 _pid) external override returns(bool){
         require(msg.sender==poolManager, "!auth");
         PoolInfo storage pool = poolInfo[_pid];
 
@@ -292,6 +343,8 @@ contract Booster{
 
         pool.shutdown = true;
         gaugeMap[pool.gauge] = false;
+
+        emit PoolShutdown(_pid);
         return true;
     }
 
