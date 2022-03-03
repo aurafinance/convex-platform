@@ -14,7 +14,7 @@ import "@openzeppelin/contracts-0.6/token/ERC20/SafeERC20.sol";
  * @dev     They say all paths lead to Rome, and the cvxBooster is no different. This is where it all goes down.
  *          It is responsible for tracking all the pools, it collects rewards from all pools and redirects it.
  */
-contract Booster is IPools {
+contract Booster{
     using SafeERC20 for IERC20;
     using Address for address;
     using SafeMath for uint256;
@@ -61,8 +61,8 @@ contract Booster is IPools {
     }
 
     //index(pid) -> pool
-    PoolInfo[] public override poolInfo;
-    mapping(address => bool) public override gaugeMap;
+    PoolInfo[] public poolInfo;
+    mapping(address => bool) public gaugeMap;
 
     event Deposited(address indexed user, uint256 indexed poolid, uint256 amount);
     event Withdrawn(address indexed user, uint256 indexed poolid, uint256 amount);
@@ -81,7 +81,7 @@ contract Booster is IPools {
     event TreasuryUpdated(address newTreasury);
     event FeeInfoUpdated(address feeDistro, address lockFees, address feeToken);
 
-/**
+    /**
      * @dev Constructor doing what constructors do. It is noteworthy that
      *      a lot of basic config is set to 0 - expecting subsequent calls to setFeeInfo etc.
      * @param _staker                 VoterProxy (locks the crv and adds to all gauges)
@@ -151,7 +151,7 @@ contract Booster is IPools {
     /**
      * @notice Pool manager is responsible for adding new pools
      */
-    function setPoolManager(address _poolM) external override {
+    function setPoolManager(address _poolM) external {
         require(msg.sender == poolManager, "!auth");
         poolManager = _poolM;
 
@@ -277,7 +277,7 @@ contract Booster is IPools {
     /// END SETTER SECTION ///
 
 
-    function poolLength() external view override returns (uint256) {
+    function poolLength() external view returns (uint256) {
         return poolInfo.length;
     }
 
@@ -285,7 +285,7 @@ contract Booster is IPools {
      * @notice Called by the PoolManager (i.e. PoolManagerProxy) to add a new pool - creates all the required
      *         contracts (DepositToken, RewardPool, Stash) and then adds to the list!
      */
-    function addPool(address _lptoken, address _gauge, uint256 _stashVersion) external override returns(bool){
+    function addPool(address _lptoken, address _gauge, uint256 _stashVersion) external returns(bool){
         require(msg.sender==poolManager && !isShutdown, "!add");
         require(_gauge != address(0) && _lptoken != address(0),"!param");
 
@@ -324,16 +324,11 @@ contract Booster is IPools {
         return true;
     }
 
-    //not implemented
-    function forceAddPool(address, address, uint256) external override returns (bool) {
-        revert();
-    }
-
     /**
      * @notice Shuts down the pool by withdrawing everything from the gauge to here (can later be
      *         claimed from depositors by using the withdraw fn) and marking it as shut down
      */
-    function shutdownPool(uint256 _pid) external override returns(bool){
+    function shutdownPool(uint256 _pid) external returns(bool){
         require(msg.sender==poolManager, "!auth");
         PoolInfo storage pool = poolInfo[_pid];
 

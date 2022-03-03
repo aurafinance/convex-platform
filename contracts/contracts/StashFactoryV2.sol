@@ -13,7 +13,7 @@ import "@openzeppelin/contracts-0.6/token/ERC20/SafeERC20.sol";
  * @author  ConvexFinance
  * @notice  Factory to deploy reward stash contracts that handle extra rewards
  */
-contract StashFactoryV2 is IStashFactory {
+contract StashFactoryV2 {
     using Address for address;
 
     bytes4 private constant rewarded_token = 0x16fa50b1; //rewarded_token()
@@ -52,30 +52,31 @@ contract StashFactoryV2 is IStashFactory {
 
     //Create a stash contract for the given gauge.
     //function calls are different depending on the version of curve gauges so determine which stash type is needed
-    function CreateStash(uint256 _pid, address _gauge, address _staker, uint256 _stashVersion) external override returns(address){
+    function CreateStash(uint256 _pid, address _gauge, address _staker, uint256 _stashVersion) external returns(address){
         require(msg.sender == operator, "!authorized");
 
-        address implementation;
         if(_stashVersion == uint256(3) && IsV3(_gauge)){
             //v3
             require(v3Implementation!=address(0),"0 impl");
-            implementation = v3Implementation;
+            address stash = IProxyFactory(proxyFactory).clone(v3Implementation);
+            IStash(stash).initialize(_pid,operator,_staker,_gauge,rewardFactory);
+            emit StashCreated(stash, _stashVersion);
+            return stash;
         }else if(_stashVersion == uint256(1) && IsV1(_gauge)){
             //v1
             require(v1Implementation!=address(0),"0 impl");
-            implementation = v1Implementation;
+            address stash = IProxyFactory(proxyFactory).clone(v1Implementation);
+            IStash(stash).initialize(_pid,operator,_staker,_gauge,rewardFactory);
+            emit StashCreated(stash, _stashVersion);
+            return stash;
         }else if(_stashVersion == uint256(2) && !IsV3(_gauge) && IsV2(_gauge)){
             //v2
             require(v2Implementation!=address(0),"0 impl");
-            implementation = v2Implementation;
-        }
-        if (implementation != address(0)) {
-            address stash = IProxyFactory(proxyFactory).clone(implementation);
+            address stash = IProxyFactory(proxyFactory).clone(v2Implementation);
             IStash(stash).initialize(_pid,operator,_staker,_gauge,rewardFactory);
             emit StashCreated(stash, _stashVersion);
             return stash;
         }
-
         bool isV1 = IsV1(_gauge);
         bool isV2 = IsV2(_gauge);
         bool isV3 = IsV3(_gauge);

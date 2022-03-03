@@ -14,7 +14,7 @@ import "@openzeppelin/contracts-0.6/token/ERC20/SafeERC20.sol";
  *          participates in Curve governance. Also handles all deposits since this is 
  *          the address that has the voting power.
  */
-contract CurveVoterProxy is IStaker {
+contract CurveVoterProxy {
     using SafeERC20 for IERC20;
     using Address for address;
     using SafeMath for uint256;
@@ -26,7 +26,7 @@ contract CurveVoterProxy is IStaker {
     address public immutable gaugeController;
     
     address public owner;
-    address public override operator;
+    address public operator;
     address public depositor;
     
     mapping (address => bool) private stashPool;
@@ -85,7 +85,7 @@ contract CurveVoterProxy is IStaker {
         depositor = _depositor;
     }
 
-    function setStashAccess(address _stash, bool _status) external override returns(bool) {
+    function setStashAccess(address _stash, bool _status) external returns(bool){
         require(msg.sender == operator, "!auth");
         if(_stash != address(0)){
             stashPool[_stash] = _status;
@@ -100,7 +100,7 @@ contract CurveVoterProxy is IStaker {
      * @param hash  Hash of vote signature that was sent to snapshot.org
      * @param valid Is the hash valid
      */
-    function setVote(bytes32 hash, bool valid) external override {
+    function setVote(bytes32 hash, bool valid) external {
         require(msg.sender == operator, "!auth");
         votes[hash] = valid;
     }
@@ -128,7 +128,7 @@ contract CurveVoterProxy is IStaker {
      * @param _token  Deposit LP token address
      * @param _gauge  Gauge contract to deposit to 
      */ 
-    function deposit(address _token, address _gauge) external override returns(bool){
+    function deposit(address _token, address _gauge) external returns(bool){
         require(msg.sender == operator, "!auth");
         if(protectedTokens[_token] == false){
             protectedTokens[_token] = true;
@@ -149,16 +149,16 @@ contract CurveVoterProxy is IStaker {
      * @notice  Withdraw ERC20 tokens that have been distributed as extra rewards
      * @dev     Only callable a pool's stash contract
      */
-    function withdraw(address _asset) external override returns (uint256 balance) {
+    function withdraw(IERC20 _asset) external returns (uint256 balance) {
         require(stashPool[msg.sender] == true, "!auth");
 
         //check protection
-        if(protectedTokens[_asset] == true){
+        if(protectedTokens[address(_asset)] == true){
             return 0;
         }
 
-        balance = IERC20(_asset).balanceOf(address(this));
-        IERC20(_asset).safeTransfer(msg.sender, balance);
+        balance = _asset.balanceOf(address(this));
+        _asset.safeTransfer(msg.sender, balance);
         return balance;
     }
 
@@ -169,7 +169,7 @@ contract CurveVoterProxy is IStaker {
      * @param _gauge    Gauge for this LP token
      * @param _amount   Amount of LP token to withdraw
      */
-    function withdraw(address _token, address _gauge, uint256 _amount) public override returns(bool){
+    function withdraw(address _token, address _gauge, uint256 _amount) public returns(bool){
         require(msg.sender == operator, "!auth");
         uint256 _balance = IERC20(_token).balanceOf(address(this));
         if (_balance < _amount) {
@@ -186,7 +186,7 @@ contract CurveVoterProxy is IStaker {
      * @param _token  LP token address
      * @param _gauge  Gauge for this LP token
      */
-    function withdrawAll(address _token, address _gauge) external override returns(bool){
+    function withdrawAll(address _token, address _gauge) external returns(bool){
         require(msg.sender == operator, "!auth");
         uint256 amount = balanceOfPool(_gauge).add(IERC20(_token).balanceOf(address(this)));
         withdraw(_token, _gauge, amount);
@@ -205,7 +205,7 @@ contract CurveVoterProxy is IStaker {
      * @param _value      Amount of crv to lock
      * @param _unlockTime Timestamp to unlock (max is 4 years)
      */
-    function createLock(uint256 _value, uint256 _unlockTime) external override returns(bool){
+    function createLock(uint256 _value, uint256 _unlockTime) external returns(bool){
         require(msg.sender == depositor, "!auth");
         IERC20(crv).safeApprove(escrow, 0);
         IERC20(crv).safeApprove(escrow, _value);
@@ -216,7 +216,7 @@ contract CurveVoterProxy is IStaker {
     /**
      * @notice Called by the CrvDepositor to increase amount of locked curve
      */
-    function increaseAmount(uint256 _value) external override returns(bool){
+    function increaseAmount(uint256 _value) external returns(bool){
         require(msg.sender == depositor, "!auth");
         IERC20(crv).safeApprove(escrow, 0);
         IERC20(crv).safeApprove(escrow, _value);
@@ -228,7 +228,7 @@ contract CurveVoterProxy is IStaker {
      * @notice Called by the CrvDepositor to increase unlocked time of curve
      * @param _value Timestamp to increase locking to
      */
-    function increaseTime(uint256 _value) external override returns(bool){
+    function increaseTime(uint256 _value) external returns(bool){
         require(msg.sender == depositor, "!auth");
         ICurveVoteEscrow(escrow).increase_unlock_time(_value);
         return true;
@@ -238,7 +238,7 @@ contract CurveVoterProxy is IStaker {
      * @notice  Withdraw all CRV from Curve's voting escrow contract
      * @dev     Only callable by CrvDepositor and can only withdraw if lock has expired
      */
-    function release() external override returns(bool){
+    function release() external returns(bool){
         require(msg.sender == depositor, "!auth");
         ICurveVoteEscrow(escrow).withdraw();
         return true;
@@ -247,13 +247,13 @@ contract CurveVoterProxy is IStaker {
     /**
      * @notice Vote on CRV DAO for proposal
      */
-    function vote(uint256 _voteId, address _votingAddress, bool _support) external override returns(bool){
+    function vote(uint256 _voteId, address _votingAddress, bool _support) external returns(bool){
         require(msg.sender == operator, "!auth");
         IVoting(_votingAddress).vote(_voteId,_support,false);
         return true;
     }
 
-    function voteGaugeWeight(address _gauge, uint256 _weight) external override returns(bool){
+    function voteGaugeWeight(address _gauge, uint256 _weight) external returns(bool){
         require(msg.sender == operator, "!auth");
 
         //vote
@@ -265,7 +265,7 @@ contract CurveVoterProxy is IStaker {
      * @notice  Claim CRV from Curve
      * @dev     Claim CRV for LP token staking from the CRV minter contract
      */
-    function claimCrv(address _gauge) external override returns (uint256){
+    function claimCrv(address _gauge) external returns (uint256){
         require(msg.sender == operator, "!auth");
         
         uint256 _balance = 0;
@@ -281,7 +281,7 @@ contract CurveVoterProxy is IStaker {
      * @notice  Claim extra rewards from gauge
      * @dev     Called by operator (Booster) to claim extra rewards 
      */
-    function claimRewards(address _gauge) external override returns(bool){
+    function claimRewards(address _gauge) external returns(bool){
         require(msg.sender == operator, "!auth");
         ICurveGauge(_gauge).claim_rewards();
         return true;
@@ -293,7 +293,7 @@ contract CurveVoterProxy is IStaker {
      * @param _distroContract   Fee distribution contract
      * @param _token            LP token to claim fees for
      */
-    function claimFees(address _distroContract, address _token) external override returns (uint256){
+    function claimFees(address _distroContract, address _token) external returns (uint256){
         require(msg.sender == operator, "!auth");
         IFeeDistro(_distroContract).claim();
         uint256 _balance = IERC20(_token).balanceOf(address(this));
@@ -301,7 +301,7 @@ contract CurveVoterProxy is IStaker {
         return _balance;
     }    
 
-    function balanceOfPool(address _gauge) public view override returns (uint256) {
+    function balanceOfPool(address _gauge) public view returns (uint256) {
         return ICurveGauge(_gauge).balanceOf(address(this));
     }
 
@@ -309,7 +309,7 @@ contract CurveVoterProxy is IStaker {
         address _to,
         uint256 _value,
         bytes calldata _data
-    ) external override returns (bool, bytes memory) {
+    ) external returns (bool, bytes memory) {
         require(msg.sender == operator,"!auth");
 
         (bool success, bytes memory result) = _to.call{value:_value}(_data);
