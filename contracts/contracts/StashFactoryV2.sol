@@ -28,6 +28,8 @@ contract StashFactoryV2 {
     address public v2Implementation;
     address public v3Implementation;
 
+    event StashCreated(address stash, uint256 stashVersion);
+
     /**
      * @param _operator       Operator is Booster
      * @param _rewardFactory  Factory that creates reward contract that are 
@@ -58,18 +60,21 @@ contract StashFactoryV2 {
             require(v3Implementation!=address(0),"0 impl");
             address stash = IProxyFactory(proxyFactory).clone(v3Implementation);
             IStash(stash).initialize(_pid,operator,_staker,_gauge,rewardFactory);
+            emit StashCreated(stash, _stashVersion);
             return stash;
         }else if(_stashVersion == uint256(1) && IsV1(_gauge)){
             //v1
             require(v1Implementation!=address(0),"0 impl");
             address stash = IProxyFactory(proxyFactory).clone(v1Implementation);
             IStash(stash).initialize(_pid,operator,_staker,_gauge,rewardFactory);
+            emit StashCreated(stash, _stashVersion);
             return stash;
         }else if(_stashVersion == uint256(2) && !IsV3(_gauge) && IsV2(_gauge)){
             //v2
             require(v2Implementation!=address(0),"0 impl");
             address stash = IProxyFactory(proxyFactory).clone(v2Implementation);
             IStash(stash).initialize(_pid,operator,_staker,_gauge,rewardFactory);
+            emit StashCreated(stash, _stashVersion);
             return stash;
         }
         bool isV1 = IsV1(_gauge);

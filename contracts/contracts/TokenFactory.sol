@@ -21,6 +21,8 @@ contract TokenFactory {
     string public namePostfix;
     string public symbolPrefix;
 
+    event DepositTokenCreated(address token, address lpToken);
+
     /**
      * @param _operator         Operator is Booster
      * @param _namePostfix      Postfixes lpToken name
@@ -40,6 +42,7 @@ contract TokenFactory {
         require(msg.sender == operator, "!authorized");
 
         DepositToken dtoken = new DepositToken(operator,_lptoken,namePostfix,symbolPrefix);
+        emit DepositTokenCreated(address(dtoken), _lptoken);
         return address(dtoken);
     }
 }

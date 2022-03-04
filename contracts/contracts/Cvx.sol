@@ -94,5 +94,4 @@ contract ConvexToken is ERC20{
             _mint(_to, _amount);
         }
     }
-
 }

@@ -46,20 +46,20 @@ interface IRegistry{
 }
 
 interface IStaker{
-    function deposit(address, address) external;
-    function withdraw(address) external;
-    function withdraw(address, address, uint256) external;
-    function withdrawAll(address, address) external;
-    function createLock(uint256, uint256) external;
-    function increaseAmount(uint256) external;
-    function increaseTime(uint256) external;
-    function release() external;
+    function deposit(address, address) external returns (bool);
+    function withdraw(address) external returns (uint256);
+    function withdraw(address, address, uint256) external returns (bool);
+    function withdrawAll(address, address) external returns (bool);
+    function createLock(uint256, uint256) external returns(bool);
+    function increaseAmount(uint256) external returns(bool);
+    function increaseTime(uint256) external returns(bool);
+    function release() external returns(bool);
     function claimCrv(address) external returns (uint256);
-    function claimRewards(address) external;
-    function claimFees(address,address) external;
-    function setStashAccess(address, bool) external;
-    function vote(uint256,address,bool) external;
-    function voteGaugeWeight(address,uint256) external;
+    function claimRewards(address) external returns(bool);
+    function claimFees(address,address) external returns (uint256);
+    function setStashAccess(address, bool) external returns (bool);
+    function vote(uint256,address,bool) external returns(bool);
+    function voteGaugeWeight(address,uint256) external returns(bool);
     function balanceOfPool(address) external view returns (uint256);
     function operator() external view returns (address);
     function execute(address _to, uint256 _value, bytes calldata _data) external returns (bool, bytes memory);

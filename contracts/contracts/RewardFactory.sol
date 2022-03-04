@@ -27,6 +27,14 @@ contract RewardFactory {
     mapping (address => bool) private rewardAccess;
     mapping(address => uint256[]) public rewardActiveList;
 
+
+    event ActiveRewardAdded(address reward, uint256 pid);
+    event ActiveRewardRemoved(address reward, uint256 pid);
+    event RewardPoolCreated(address rewardPool, uint256 _pid, address depositToken);
+    event TokenRewardPoolCreated(address rewardPool, address token, address mainRewards, address operator);
+
+    event AccessChanged(address stash, bool hasAccess);
+
     /**
      * @param _operator   Contract operator is Booster
      * @param _crv        CRV token address
@@ -55,6 +63,8 @@ contract RewardFactory {
             if(activeList[i] == pid) return true;
         }
         activeList.push(pid);
+
+        emit ActiveRewardAdded(_reward, pid);
         return true;
     }
 
@@ -74,6 +84,8 @@ contract RewardFactory {
                     activeList[i] = activeList[length-1];
                 }
                 activeList.pop();
+
+                emit ActiveRewardRemoved(_reward, _pid);
                 break;
             }
         }
@@ -84,6 +96,8 @@ contract RewardFactory {
     function setAccess(address _stash, bool _status) external{
         require(msg.sender == operator, "!auth");
         rewardAccess[_stash] = _status;
+
+        emit AccessChanged(_stash, _status);
     }
 
     /**
@@ -95,6 +109,8 @@ contract RewardFactory {
         //operator = booster(deposit) contract so that new crv can be added and distributed
         //reward manager = this factory so that extra incentive tokens(ex. snx) can be linked to the main managed reward pool
         BaseRewardPool rewardPool = new BaseRewardPool(_pid,_depositToken,crv,operator, address(this));
+
+        emit RewardPoolCreated(address(rewardPool), _pid, _depositToken);
         return address(rewardPool);
     }
 
@@ -110,6 +126,8 @@ contract RewardFactory {
         address rAddress = address(rewardPool);
         //add the new pool to main pool's list of extra rewards, assuming this factory has "reward manager" role
         IRewards(_mainRewards).addExtraReward(rAddress);
+
+        emit TokenRewardPoolCreated(rAddress, _token, _mainRewards, _operator);
         //return new pool's address
         return rAddress;
     }
