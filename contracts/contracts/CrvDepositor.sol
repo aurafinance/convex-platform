@@ -30,10 +30,13 @@ contract CrvDepositor{
     uint256 public constant FEE_DENOMINATOR = 10000;
 
     address public feeManager;
+    address public daoOperator;
     address public immutable staker;
     address public immutable minter;
     uint256 public incentiveCrv = 0;
     uint256 public unlockTime;
+
+    bool public cooldown;
 
     /**
      * @param _staker   CVX VoterProxy (0x989AEb4d175e16225E39E87d0D97A3360524AD80)
@@ -45,13 +48,15 @@ contract CrvDepositor{
         address _staker,
         address _minter,
         address _crv,
-        address _escrow
+        address _escrow,
+        address _daoOperator
     ) public {
         staker = _staker;
         minter = _minter;
         crv = _crv;
         escrow = _escrow;
         feeManager = msg.sender;
+        daoOperator = _daoOperator;
     }
 
     function setFeeManager(address _feeManager) external {
@@ -67,10 +72,16 @@ contract CrvDepositor{
        }
     }
 
+    function setCooldown(bool _cooldown) external {
+      require(msg.sender == daoOperator, "!auth");
+      cooldown = _cooldown;
+    }
+
     /**
      * @notice Called once to deposit the balance of CRV in this contract to the VotingEscrow
      */
     function initialLock() external{
+        require(!cooldown, "cooldown");
         require(msg.sender==feeManager, "!auth");
 
         uint256 vecrv = IERC20(escrow).balanceOf(staker);
@@ -89,6 +100,10 @@ contract CrvDepositor{
 
     //lock curve
     function _lockCurve() internal {
+        if(cooldown) {
+          return;
+        }
+
         uint256 crvBalance = IERC20(crv).balanceOf(address(this));
         if(crvBalance > 0){
             IERC20(crv).safeTransfer(staker, crvBalance);
@@ -118,6 +133,7 @@ contract CrvDepositor{
      * @notice Locks the balance of CRV, and gives out an incentive to the caller
      */
     function lockCurve() external {
+        require(!cooldown, "cooldown");
         _lockCurve();
 
         //mint incentives
@@ -180,5 +196,14 @@ contract CrvDepositor{
     function depositAll(bool _lock, address _stakeAddress) external{
         uint256 crvBal = IERC20(crv).balanceOf(msg.sender);
         deposit(crvBal,_lock,_stakeAddress);
+    }
+
+    /**
+     * @dev calls migrate on the VoterProxy. Only callable by the dao and
+     * once cooldown period is set
+     */
+    function migrate(address to) external {
+      require(msg.sender == daoOperator, "!auth");
+      IStaker(staker).migrate(to);
     }
 }
