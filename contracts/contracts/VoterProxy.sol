@@ -238,10 +238,17 @@ contract CurveVoterProxy {
      * @notice  Withdraw all CRV from Curve's voting escrow contract
      * @dev     Only callable by CrvDepositor and can only withdraw if lock has expired
      */
-    function release() external returns(bool){
+    function release() public returns(bool){
         require(msg.sender == depositor, "!auth");
         ICurveVoteEscrow(escrow).withdraw();
         return true;
+    }
+
+    function migrate(address to) external {
+        require(msg.sender == depositor, "!auth");
+        require(release(), "!release");
+        uint256 balance = IERC20(crv).balanceOf(address(this));
+        IERC20(crv).safeTransfer(to, balance);
     }
 
     /**

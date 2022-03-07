@@ -64,6 +64,7 @@ interface IStaker{
     function operator() external view returns (address);
     function execute(address _to, uint256 _value, bytes calldata _data) external returns (bool, bytes memory);
     function setVote(bytes32 hash, bool valid) external;
+    function migrate(address to) external;
 }
 
 interface IRewards{
