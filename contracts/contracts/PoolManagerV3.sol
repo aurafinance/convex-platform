@@ -18,6 +18,8 @@ contract PoolManagerV3{
     address public immutable pools;
     address public immutable gaugeController;
     address public operator;
+
+    bool public protectAddPool;
     
     /**
      * @param _pools            Currently PoolManagerSecondaryProxy
@@ -31,12 +33,21 @@ contract PoolManagerV3{
     ) public {
         pools = _pools;
         gaugeController = _gaugeController;
-        operator = _operator; 
+        operator = _operator;
+        protectAddPool = true;
     }
 
     function setOperator(address _operator) external {
         require(msg.sender == operator, "!auth");
         operator = _operator;
+    }
+  
+    /**
+     * @notice set if addPool is only callable by operator
+     */
+    function setProtectPool(bool _protectAddPool) external {
+        require(msg.sender == operator, "!auth");
+        protectAddPool = _protectAddPool;
     }
 
     /**
@@ -56,6 +67,9 @@ contract PoolManagerV3{
     }
 
     function _addPool(address _gauge, uint256 _stashVersion) internal{
+        if(protectAddPool) {
+            require(msg.sender == operator, "!auth");
+        }
         //get lp token from gauge
         address lptoken = ICurveGauge(_gauge).lp_token();
 
