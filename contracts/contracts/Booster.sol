@@ -20,8 +20,6 @@ contract Booster{
     using SafeMath for uint256;
 
     address public immutable crv;
-    address public immutable registry;
-    uint256 public immutable distributionAddressId;
     address public immutable voteOwnership;
     address public immutable voteParameter;
 
@@ -45,9 +43,13 @@ contract Booster{
     address public treasury;
     address public stakerRewards; //cvx rewards
     address public lockRewards; //cvxCrv rewards(crv)
-    address public lockFees; //cvxCrv vecrv fees
-    address public feeDistro;
-    address public feeToken;
+
+    Fee[] public fees;
+    struct Fee {
+        address distro;
+        address token;
+        address virtualRewards;
+    }
 
     bool public isShutdown;
 
@@ -87,8 +89,6 @@ contract Booster{
      * @param _staker                 VoterProxy (locks the crv and adds to all gauges)
      * @param _minter                 CVX token, or the thing that mints it
      * @param _crv                    CRV
-     * @param _registry               Curve address registry (0x0000000022D53366457F9d5E68Ec105046FC4383)
-     * @param _distributionAddressId  ID of the feeToken distribution in the curve registry
      * @param _voteOwnership          Address of the Curve DAO responsible for ownership stuff
      * @param _voteParameter          Address of the Curve DAO responsible for param updates
      */
@@ -96,7 +96,6 @@ contract Booster{
         address _staker,
         address _minter,
         address _crv,
-        address _registry,
         uint _distributionAddressId,
         address _voteOwnership,
         address _voteParameter
@@ -105,8 +104,6 @@ contract Booster{
         staker = _staker;
         minter = _minter;
         crv = _crv;
-        registry = _registry;
-        distributionAddressId = _distributionAddressId;
         voteOwnership = _voteOwnership;
         voteParameter = _voteParameter;
         isShutdown = false;
@@ -220,11 +217,17 @@ contract Booster{
      * @notice Set reward token and claim contract, get from Curve's registry.
      * @dev    This creates a secondary (VirtualRewardsPool) rewards contract for the vcxCrv staking contract
      */
-    function setFeeInfo() external {
-        require(msg.sender==feeManager, "!auth");
+    function setFeeInfo(address _feeDistro) external {
+        require(msg.sender==owner, "!auth");
         
-        address _feeDistro = IRegistry(registry).get_address(distributionAddressId);
-        feeDistro = _feeDistro;
+        // require _feeDistro not exists
+        uint256 feesLen = fees.length;
+        for(uint256 i = 0; i < feesLen; i++){
+            if(fees[i].distro == _feeDistro) return;
+        }
+
+        // TODO - make fee addition generic
+        // TODO - handle removal of fees in future
         address _feeToken = IFeeDistro(feeDistro).token();
         if(feeToken != _feeToken){
             //create a new reward contract for the new token
