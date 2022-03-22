@@ -27,7 +27,7 @@ contract Booster{
     uint256 public stakerIncentive = 1100; //incentive to native token stakers
     uint256 public earmarkIncentive = 50; //incentive to users who spend gas to make calls
     uint256 public platformFee = 0; //possible fee to build treasury
-    uint256 public constant MaxFees = 2000;
+    uint256 public constant MaxFees = 2500;
     uint256 public constant FEE_DENOMINATOR = 10000;
 
     address public owner;
@@ -220,13 +220,13 @@ contract Booster{
         
         // require _feeDistro not exists
         require(fees[_feeDistro].token == address(0), "Already exists");
+        require(lockRewards != address(0), "Rewards not initialised");
 
         address feeToken = IFeeDistro(_feeDistro).token();
         require(feeToken != address(0), "Fee distro not initialised");
 
         // Distributed directly
         if(feeToken == crv){
-            require(lockRewards != address(0), "Rewards not initialised");
             fees[_feeDistro] = FeeDistro({
                 token: crv,
                 rewards: lockRewards,
@@ -246,7 +246,7 @@ contract Booster{
     }
 
     /**
-     * @notice Allows turning of or on for fee distro
+     * @notice Allows turning off or on for fee distro
      */
     function updateFeeInfo(address _feeDistro, bool _active) external {
         require(msg.sender==owner, "!auth");
@@ -272,8 +272,8 @@ contract Booster{
         require(total <= MaxFees, ">MaxFees");
 
         //values must be within certain ranges     
-        if(_lockFees >= 1000 && _lockFees <= 1500
-            && _stakerFees >= 300 && _stakerFees <= 600
+        if(_lockFees >= 300 && _lockFees <= 1500
+            && _stakerFees >= 300 && _stakerFees <= 1500
             && _callerFees >= 10 && _callerFees <= 100
             && _platform <= 200){
             lockIncentive = _lockFees;
