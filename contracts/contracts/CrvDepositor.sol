@@ -144,6 +144,14 @@ contract CrvDepositor{
     }
 
     /**
+     * @notice Deposit crv for cvxCrv on behalf of another user
+     * @dev    See depositFor(address, uint256, bool, address) 
+     */
+    function deposit(uint256 _amount, bool _lock, address _stakeAddress) public {
+        depositFor(msg.sender, _amount, _lock, _stakeAddress);
+    }
+
+    /**
      * @notice Deposit crv for cvxCrv
      * @dev    Can locking immediately or defer locking to someone else by paying a fee.
      *         while users can choose to lock or defer, this is mostly in place so that
@@ -152,7 +160,7 @@ contract CrvDepositor{
      * @param _lock          Lock now? or pay ~1% to the locker
      * @param _stakeAddress  Stake in cvxCrv staking?
      */
-    function deposit(uint256 _amount, bool _lock, address _stakeAddress) public {
+    function depositFor(address to, uint256 _amount, bool _lock, address _stakeAddress) public {
         require(_amount > 0,"!>0");
         
         if(_lock){
@@ -177,15 +185,15 @@ contract CrvDepositor{
 
         bool depositOnly = _stakeAddress == address(0);
         if(depositOnly){
-            //mint for msg.sender
-            ITokenMinter(minter).mint(msg.sender,_amount);
+            //mint for to
+            ITokenMinter(minter).mint(to,_amount);
         }else{
             //mint here 
             ITokenMinter(minter).mint(address(this),_amount);
-            //stake for msg.sender
+            //stake for to
             IERC20(minter).safeApprove(_stakeAddress,0);
             IERC20(minter).safeApprove(_stakeAddress,_amount);
-            IRewards(_stakeAddress).stakeFor(msg.sender,_amount);
+            IRewards(_stakeAddress).stakeFor(to,_amount);
         }
     }
 
