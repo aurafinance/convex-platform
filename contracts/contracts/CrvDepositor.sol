@@ -23,7 +23,7 @@ contract CrvDepositor{
 
     address public immutable crv;
     address public immutable escrow;
-    uint256 private constant MAXTIME = 4 * 364 * 86400;
+    uint256 private constant MAXTIME = 1 * 364 * 86400;
     uint256 private constant WEEK = 7 * 86400;
 
     uint256 public lockIncentive = 10; //incentive to users who spend gas to lock crv

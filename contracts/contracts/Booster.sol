@@ -20,16 +20,14 @@ contract Booster{
     using SafeMath for uint256;
 
     address public immutable crv;
-    address public immutable registry;
-    uint256 public immutable distributionAddressId;
     address public immutable voteOwnership;
     address public immutable voteParameter;
 
-    uint256 public lockIncentive = 1000; //incentive to crv stakers
-    uint256 public stakerIncentive = 450; //incentive to native token stakers
+    uint256 public lockIncentive = 550; //incentive to crv stakers
+    uint256 public stakerIncentive = 1100; //incentive to native token stakers
     uint256 public earmarkIncentive = 50; //incentive to users who spend gas to make calls
     uint256 public platformFee = 0; //possible fee to build treasury
-    uint256 public constant MaxFees = 2000;
+    uint256 public constant MaxFees = 2500;
     uint256 public constant FEE_DENOMINATOR = 10000;
 
     address public owner;
@@ -45,9 +43,13 @@ contract Booster{
     address public treasury;
     address public stakerRewards; //cvx rewards
     address public lockRewards; //cvxCrv rewards(crv)
-    address public lockFees; //cvxCrv vecrv fees
-    address public feeDistro;
-    address public feeToken;
+
+    mapping(address => FeeDistro) public fees;
+    struct FeeDistro {
+        address token;
+        address rewards;
+        bool active;
+    }
 
     bool public isShutdown;
 
@@ -80,6 +82,7 @@ contract Booster{
     event FeesUpdated(uint256 lockIncentive, uint256 stakerIncentive, uint256 earmarkIncentive, uint256 platformFee);
     event TreasuryUpdated(address newTreasury);
     event FeeInfoUpdated(address feeDistro, address lockFees, address feeToken);
+    event FeeInfoChanged(address feeDistro, bool active);
 
     /**
      * @dev Constructor doing what constructors do. It is noteworthy that
@@ -87,8 +90,6 @@ contract Booster{
      * @param _staker                 VoterProxy (locks the crv and adds to all gauges)
      * @param _minter                 CVX token, or the thing that mints it
      * @param _crv                    CRV
-     * @param _registry               Curve address registry (0x0000000022D53366457F9d5E68Ec105046FC4383)
-     * @param _distributionAddressId  ID of the feeToken distribution in the curve registry
      * @param _voteOwnership          Address of the Curve DAO responsible for ownership stuff
      * @param _voteParameter          Address of the Curve DAO responsible for param updates
      */
@@ -96,8 +97,6 @@ contract Booster{
         address _staker,
         address _minter,
         address _crv,
-        address _registry,
-        uint _distributionAddressId,
         address _voteOwnership,
         address _voteParameter
     ) public {
@@ -105,8 +104,6 @@ contract Booster{
         staker = _staker;
         minter = _minter;
         crv = _crv;
-        registry = _registry;
-        distributionAddressId = _distributionAddressId;
         voteOwnership = _voteOwnership;
         voteParameter = _voteParameter;
         isShutdown = false;
@@ -115,8 +112,6 @@ contract Booster{
         voteDelegate = msg.sender;
         feeManager = msg.sender;
         poolManager = msg.sender;
-        feeDistro = address(0); //address(0xA464e6DCda8AC41e03616F95f4BC98a13b8922Dc);
-        feeToken = address(0); //address(0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490);
         treasury = address(0);
 
         emit OwnerUpdated(msg.sender);
@@ -217,24 +212,50 @@ contract Booster{
     }
 
     /**
-     * @notice Set reward token and claim contract, get from Curve's registry.
+     * @notice Set reward token and claim contract
      * @dev    This creates a secondary (VirtualRewardsPool) rewards contract for the vcxCrv staking contract
      */
-    function setFeeInfo() external {
-        require(msg.sender==feeManager, "!auth");
+    function setFeeInfo(address _feeDistro) external {
+        require(msg.sender==owner, "!auth");
         
-        address _feeDistro = IRegistry(registry).get_address(distributionAddressId);
-        feeDistro = _feeDistro;
-        address _feeToken = IFeeDistro(feeDistro).token();
-        if(feeToken != _feeToken){
-            //create a new reward contract for the new token
-            address _lockFees = IRewardFactory(rewardFactory).CreateTokenRewards(_feeToken, lockRewards, address(this));
-            lockFees = _lockFees;
-            feeToken = _feeToken;
-            emit FeeInfoUpdated(_feeDistro, _lockFees, _feeToken);
+        // require _feeDistro not exists
+        require(fees[_feeDistro].token == address(0), "Already exists");
+        require(lockRewards != address(0) && rewardFactory != address(0), "System not initialised");
+
+        address feeToken = IFeeDistro(_feeDistro).token();
+        require(feeToken != address(0), "Fee distro not initialised");
+
+        // Distributed directly
+        if(feeToken == crv){
+            fees[_feeDistro] = FeeDistro({
+                token: crv,
+                rewards: lockRewards,
+                active: true
+            });
+            emit FeeInfoUpdated(_feeDistro, crv, lockRewards);
         } else {
-            emit FeeInfoUpdated(_feeDistro, address(0), address(0));
+            //create a new reward contract for the new token
+            address rewards = IRewardFactory(rewardFactory).CreateTokenRewards(feeToken, lockRewards, address(this));
+            fees[_feeDistro] = FeeDistro({
+                token: feeToken,
+                rewards: rewards,
+                active: true
+            });
+            emit FeeInfoUpdated(_feeDistro, rewards, feeToken);
         }
+    }
+
+    /**
+     * @notice Allows turning off or on for fee distro
+     */
+    function updateFeeInfo(address _feeDistro, bool _active) external {
+        require(msg.sender==owner, "!auth");
+
+        require(fees[_feeDistro].token != address(0), "Fee doesn't exist");
+
+        fees[_feeDistro].active = _active;
+
+        emit FeeInfoChanged(_feeDistro, _active);
     }
 
     /**
@@ -251,8 +272,8 @@ contract Booster{
         require(total <= MaxFees, ">MaxFees");
 
         //values must be within certain ranges     
-        if(_lockFees >= 1000 && _lockFees <= 1500
-            && _stakerFees >= 300 && _stakerFees <= 600
+        if(_lockFees >= 300 && _lockFees <= 1500
+            && _stakerFees >= 300 && _stakerFees <= 1500
             && _callerFees >= 10 && _callerFees <= 100
             && _platform <= 200){
             lockIncentive = _lockFees;
@@ -616,13 +637,18 @@ contract Booster{
      * @notice Claim fees from curve distro contract, put in lockers' reward contract.
      *         lockFees is the secondary reward contract that uses the virtual balances from cvxCrv
      */
-    function earmarkFees() external returns(bool){
+    function earmarkFees(address _feeDistro) external returns(bool){
+        FeeDistro memory distro = fees[_feeDistro];
+        
+        require(distro.active, "Inactive distro");
+
         //claim fee rewards
-        IStaker(staker).claimFees(feeDistro, feeToken);
+        IStaker(staker).claimFees(_feeDistro, distro.token);
         //send fee rewards to reward contract
-        uint256 _balance = IERC20(feeToken).balanceOf(address(this));
-        IERC20(feeToken).safeTransfer(lockFees, _balance);
-        IRewards(lockFees).queueNewRewards(_balance);
+        uint256 _balance = IERC20(distro.token).balanceOf(address(this));
+        IERC20(distro.token).safeTransfer(distro.rewards, _balance);
+        IRewards(distro.rewards).queueNewRewards(_balance);
+
         return true;
     }
 

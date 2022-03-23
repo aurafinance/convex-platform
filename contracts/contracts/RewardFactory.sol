@@ -24,16 +24,12 @@ contract RewardFactory {
     address public immutable operator;
     address public immutable crv;
 
-    mapping (address => bool) private rewardAccess;
     mapping(address => uint256[]) public rewardActiveList;
 
 
-    event ActiveRewardAdded(address reward, uint256 pid);
-    event ActiveRewardRemoved(address reward, uint256 pid);
     event RewardPoolCreated(address rewardPool, uint256 _pid, address depositToken);
     event TokenRewardPoolCreated(address rewardPool, address token, address mainRewards, address operator);
 
-    event AccessChanged(address stash, bool hasAccess);
 
     /**
      * @param _operator   Contract operator is Booster
@@ -42,62 +38,6 @@ contract RewardFactory {
     constructor(address _operator, address _crv) public {
         operator = _operator;
         crv = _crv;
-    }
-
-    //Get active count function
-    function activeRewardCount(address _reward) external view returns(uint256){
-        return rewardActiveList[_reward].length;
-    }
-
-    function addActiveReward(address _reward, uint256 _pid) external returns(bool){
-        require(rewardAccess[msg.sender] == true,"!auth");
-        if(_reward == address(0)){
-            return true;
-        }
-
-        uint256[] storage activeList = rewardActiveList[_reward];
-        uint256 pid = _pid+1; //offset by 1 so that we can use 0 as empty
-
-        uint256 length = activeList.length;
-        for(uint256 i = 0; i < length; i++){
-            if(activeList[i] == pid) return true;
-        }
-        activeList.push(pid);
-
-        emit ActiveRewardAdded(_reward, pid);
-        return true;
-    }
-
-    function removeActiveReward(address _reward, uint256 _pid) external returns(bool){
-        require(rewardAccess[msg.sender] == true,"!auth");
-        if(_reward == address(0)){
-            return true;
-        }
-
-        uint256[] storage activeList = rewardActiveList[_reward];
-        uint256 pid = _pid+1; //offset by 1 so that we can use 0 as empty
-
-        uint256 length = activeList.length;
-        for(uint256 i = 0; i < length; i++){
-            if(activeList[i] == pid){
-                if (i != length-1) {
-                    activeList[i] = activeList[length-1];
-                }
-                activeList.pop();
-
-                emit ActiveRewardRemoved(_reward, _pid);
-                break;
-            }
-        }
-        return true;
-    }
-
-    //stash contracts need access to create new Virtual balance pools for extra gauge incentives(ex. snx)
-    function setAccess(address _stash, bool _status) external{
-        require(msg.sender == operator, "!auth");
-        rewardAccess[_stash] = _status;
-
-        emit AccessChanged(_stash, _status);
     }
 
     /**
@@ -119,7 +59,7 @@ contract RewardFactory {
      *          used for extra incentive tokens(ex. snx) as well as vecrv fees
      */
     function CreateTokenRewards(address _token, address _mainRewards, address _operator) external returns (address) {
-        require(msg.sender == operator || rewardAccess[msg.sender] == true, "!auth");
+        require(msg.sender == operator, "!auth");
 
         //create new pool, use main pool for balance lookup
         VirtualBalanceRewardPool rewardPool = new VirtualBalanceRewardPool(_mainRewards,_token,_operator);
