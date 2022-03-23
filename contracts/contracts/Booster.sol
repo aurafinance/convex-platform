@@ -271,18 +271,17 @@ contract Booster{
         uint256 total = _lockFees.add(_stakerFees).add(_callerFees).add(_platform);
         require(total <= MaxFees, ">MaxFees");
 
-        //values must be within certain ranges     
-        if(_lockFees >= 300 && _lockFees <= 1500
-            && _stakerFees >= 300 && _stakerFees <= 1500
-            && _callerFees >= 10 && _callerFees <= 100
-            && _platform <= 200){
-            lockIncentive = _lockFees;
-            stakerIncentive = _stakerFees;
-            earmarkIncentive = _callerFees;
-            platformFee = _platform;
+        require(_lockFees >= 300 && _lockFees <= 1500, "!lockFees");
+        require(_stakerFees >= 300 && _stakerFees <= 1500, "!stakerFees");
+        require(_callerFees >= 10 && _callerFees <= 100, "!callerFees");
+        require(_platform <= 200, "!platform");
 
-            emit FeesUpdated(_lockFees, _stakerFees, _callerFees, _platform);
-        }
+        lockIncentive = _lockFees;
+        stakerIncentive = _stakerFees;
+        earmarkIncentive = _callerFees;
+        platformFee = _platform;
+
+        emit FeesUpdated(_lockFees, _stakerFees, _callerFees, _platform);
     }
 
     /**
