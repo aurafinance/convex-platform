@@ -212,7 +212,7 @@ contract Booster{
     }
 
     /**
-     * @notice Set reward token and claim contract, get from Curve's registry.
+     * @notice Set reward token and claim contract
      * @dev    This creates a secondary (VirtualRewardsPool) rewards contract for the vcxCrv staking contract
      */
     function setFeeInfo(address _feeDistro) external {
@@ -220,7 +220,7 @@ contract Booster{
         
         // require _feeDistro not exists
         require(fees[_feeDistro].token == address(0), "Already exists");
-        require(lockRewards != address(0), "Rewards not initialised");
+        require(lockRewards != address(0) && rewardFactory != address(0), "System not initialised");
 
         address feeToken = IFeeDistro(_feeDistro).token();
         require(feeToken != address(0), "Fee distro not initialised");
