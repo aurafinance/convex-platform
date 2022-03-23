@@ -21,6 +21,7 @@ contract CurveVoterProxy {
 
     address public immutable mintr;
     address public immutable crv;
+    address public immutable crvBpt;
 
     address public immutable escrow;
     address public immutable gaugeController;
@@ -45,11 +46,13 @@ contract CurveVoterProxy {
     constructor(
       address _mintr, 
       address _crv,
+      address _crvBpt,
       address _escrow,
       address _gaugeController
     ) public {
         mintr = _mintr; 
         crv = _crv;
+        crvBpt = _crvBpt;
         escrow = _escrow;
         gaugeController = _gaugeController;
         owner = msg.sender;
@@ -207,8 +210,8 @@ contract CurveVoterProxy {
      */
     function createLock(uint256 _value, uint256 _unlockTime) external returns(bool){
         require(msg.sender == depositor, "!auth");
-        IERC20(crv).safeApprove(escrow, 0);
-        IERC20(crv).safeApprove(escrow, _value);
+        IERC20(crvBpt).safeApprove(escrow, 0);
+        IERC20(crvBpt).safeApprove(escrow, _value);
         ICurveVoteEscrow(escrow).create_lock(_value, _unlockTime);
         return true;
     }
@@ -218,8 +221,8 @@ contract CurveVoterProxy {
      */
     function increaseAmount(uint256 _value) external returns(bool){
         require(msg.sender == depositor, "!auth");
-        IERC20(crv).safeApprove(escrow, 0);
-        IERC20(crv).safeApprove(escrow, _value);
+        IERC20(crvBpt).safeApprove(escrow, 0);
+        IERC20(crvBpt).safeApprove(escrow, _value);
         ICurveVoteEscrow(escrow).increase_amount(_value);
         return true;
     }
@@ -247,8 +250,8 @@ contract CurveVoterProxy {
     function migrate(address to) external {
         require(msg.sender == depositor, "!auth");
         require(release(), "!release");
-        uint256 balance = IERC20(crv).balanceOf(address(this));
-        IERC20(crv).safeTransfer(to, balance);
+        uint256 balance = IERC20(crvBpt).balanceOf(address(this));
+        IERC20(crvBpt).safeTransfer(to, balance);
     }
 
     /**

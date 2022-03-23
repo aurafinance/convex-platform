@@ -21,12 +21,12 @@ contract CrvDepositor{
     using Address for address;
     using SafeMath for uint256;
 
-    address public immutable crv;
+    address public immutable crvBpt;
     address public immutable escrow;
     uint256 private constant MAXTIME = 1 * 364 * 86400;
     uint256 private constant WEEK = 7 * 86400;
 
-    uint256 public lockIncentive = 10; //incentive to users who spend gas to lock crv
+    uint256 public lockIncentive = 10; //incentive to users who spend gas to lock crvBpt
     uint256 public constant FEE_DENOMINATOR = 10000;
 
     address public feeManager;
@@ -41,19 +41,19 @@ contract CrvDepositor{
     /**
      * @param _staker   CVX VoterProxy (0x989AEb4d175e16225E39E87d0D97A3360524AD80)
      * @param _minter   cvxCRV token (0x62B9c7356A2Dc64a1969e19C23e4f579F9810Aa7)
-     * @param _crv      CRV token (0xD533a949740bb3306d119CC777fa900bA034cd52)
+     * @param _crvBpt   crvBPT for veCRV deposits
      * @param _escrow   CRV VotingEscrow (0x5f3b5DfEb7B28CDbD7FAba78963EE202a494e2A2)
      */
     constructor(
         address _staker,
         address _minter,
-        address _crv,
+        address _crvBpt,
         address _escrow,
         address _daoOperator
     ) public {
         staker = _staker;
         minter = _minter;
-        crv = _crv;
+        crvBpt = _crvBpt;
         escrow = _escrow;
         feeManager = msg.sender;
         daoOperator = _daoOperator;
@@ -92,7 +92,7 @@ contract CrvDepositor{
             //release old lock if exists
             IStaker(staker).release();
             //create new lock
-            uint256 crvBalanceStaker = IERC20(crv).balanceOf(staker);
+            uint256 crvBalanceStaker = IERC20(crvBpt).balanceOf(staker);
             IStaker(staker).createLock(crvBalanceStaker, unlockAt);
             unlockTime = unlockInWeeks;
         }
@@ -104,13 +104,13 @@ contract CrvDepositor{
           return;
         }
 
-        uint256 crvBalance = IERC20(crv).balanceOf(address(this));
+        uint256 crvBalance = IERC20(crvBpt).balanceOf(address(this));
         if(crvBalance > 0){
-            IERC20(crv).safeTransfer(staker, crvBalance);
+            IERC20(crvBpt).safeTransfer(staker, crvBalance);
         }
         
         //increase ammount
-        uint256 crvBalanceStaker = IERC20(crv).balanceOf(staker);
+        uint256 crvBalanceStaker = IERC20(crvBpt).balanceOf(staker);
         if(crvBalanceStaker == 0){
             return;
         }
@@ -144,7 +144,15 @@ contract CrvDepositor{
     }
 
     /**
-     * @notice Deposit crv for cvxCrv
+     * @notice Deposit crvBpt for cvxCrv on behalf of another user
+     * @dev    See depositFor(address, uint256, bool, address) 
+     */
+    function deposit(uint256 _amount, bool _lock, address _stakeAddress) public {
+        depositFor(msg.sender, _amount, _lock, _stakeAddress);
+    }
+
+    /**
+     * @notice Deposit crvBpt for cvxCrv
      * @dev    Can locking immediately or defer locking to someone else by paying a fee.
      *         while users can choose to lock or defer, this is mostly in place so that
      *         the cvx reward contract isnt costly to claim rewards.
@@ -152,12 +160,12 @@ contract CrvDepositor{
      * @param _lock          Lock now? or pay ~1% to the locker
      * @param _stakeAddress  Stake in cvxCrv staking?
      */
-    function deposit(uint256 _amount, bool _lock, address _stakeAddress) public {
+    function depositFor(address to, uint256 _amount, bool _lock, address _stakeAddress) public {
         require(_amount > 0,"!>0");
         
         if(_lock){
             //lock immediately, transfer directly to staker to skip an erc20 transfer
-            IERC20(crv).safeTransferFrom(msg.sender, staker, _amount);
+            IERC20(crvBpt).safeTransferFrom(msg.sender, staker, _amount);
             _lockCurve();
             if(incentiveCrv > 0){
                 //add the incentive tokens here so they can be staked together
@@ -166,7 +174,7 @@ contract CrvDepositor{
             }
         }else{
             //move tokens here
-            IERC20(crv).safeTransferFrom(msg.sender, address(this), _amount);
+            IERC20(crvBpt).safeTransferFrom(msg.sender, address(this), _amount);
             //defer lock cost to another user
             uint256 callIncentive = _amount.mul(lockIncentive).div(FEE_DENOMINATOR);
             _amount = _amount.sub(callIncentive);
@@ -177,15 +185,15 @@ contract CrvDepositor{
 
         bool depositOnly = _stakeAddress == address(0);
         if(depositOnly){
-            //mint for msg.sender
-            ITokenMinter(minter).mint(msg.sender,_amount);
+            //mint for to
+            ITokenMinter(minter).mint(to,_amount);
         }else{
             //mint here 
             ITokenMinter(minter).mint(address(this),_amount);
-            //stake for msg.sender
+            //stake for to
             IERC20(minter).safeApprove(_stakeAddress,0);
             IERC20(minter).safeApprove(_stakeAddress,_amount);
-            IRewards(_stakeAddress).stakeFor(msg.sender,_amount);
+            IRewards(_stakeAddress).stakeFor(to,_amount);
         }
     }
 
@@ -194,7 +202,7 @@ contract CrvDepositor{
     }
 
     function depositAll(bool _lock, address _stakeAddress) external{
-        uint256 crvBal = IERC20(crv).balanceOf(msg.sender);
+        uint256 crvBal = IERC20(crvBpt).balanceOf(msg.sender);
         deposit(crvBal,_lock,_stakeAddress);
     }
 
