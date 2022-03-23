@@ -41,7 +41,7 @@ contract CrvDepositor{
     /**
      * @param _staker   CVX VoterProxy (0x989AEb4d175e16225E39E87d0D97A3360524AD80)
      * @param _minter   cvxCRV token (0x62B9c7356A2Dc64a1969e19C23e4f579F9810Aa7)
-     * @param _crv      CRV token (0xD533a949740bb3306d119CC777fa900bA034cd52)
+     * @param _crvBpt   crvBPT for veCRV deposits
      * @param _escrow   CRV VotingEscrow (0x5f3b5DfEb7B28CDbD7FAba78963EE202a494e2A2)
      */
     constructor(
