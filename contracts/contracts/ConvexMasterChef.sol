@@ -50,8 +50,6 @@ contract ConvexMasterChef is Ownable {
 
     //cvx
     IERC20 public immutable cvx;
-    // Block number when bonus CVX period ends.
-    uint256 public immutable bonusEndBlock;
     // CVX tokens created per block.
     uint256 public immutable rewardPerBlock;
     // Bonus muliplier for early cvx makers.
@@ -85,7 +83,6 @@ contract ConvexMasterChef is Ownable {
     ) public {
         cvx = _cvx;
         rewardPerBlock = _rewardPerBlock;
-        bonusEndBlock = 0;
         startBlock = _startBlock;
         endBlock = _endBlock;
     }
