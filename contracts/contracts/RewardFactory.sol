@@ -24,12 +24,14 @@ contract RewardFactory {
     address public immutable operator;
     address public immutable crv;
 
+    mapping (address => bool) private rewardAccess;
     mapping(address => uint256[]) public rewardActiveList;
 
 
     event RewardPoolCreated(address rewardPool, uint256 _pid, address depositToken);
     event TokenRewardPoolCreated(address rewardPool, address token, address mainRewards, address operator);
 
+    event AccessChanged(address stash, bool hasAccess);
 
     /**
      * @param _operator   Contract operator is Booster
@@ -38,6 +40,14 @@ contract RewardFactory {
     constructor(address _operator, address _crv) public {
         operator = _operator;
         crv = _crv;
+    }
+
+    //stash contracts need access to create new Virtual balance pools for extra gauge incentives(ex. snx)
+    function setAccess(address _stash, bool _status) external{
+        require(msg.sender == operator, "!auth");
+        rewardAccess[_stash] = _status;
+
+        emit AccessChanged(_stash, _status);
     }
 
     /**
@@ -59,7 +69,7 @@ contract RewardFactory {
      *          used for extra incentive tokens(ex. snx) as well as vecrv fees
      */
     function CreateTokenRewards(address _token, address _mainRewards, address _operator) external returns (address) {
-        require(msg.sender == operator, "!auth");
+        require(msg.sender == operator || rewardAccess[msg.sender] == true, "!auth");
 
         //create new pool, use main pool for balance lookup
         VirtualBalanceRewardPool rewardPool = new VirtualBalanceRewardPool(_mainRewards,_token,_operator);

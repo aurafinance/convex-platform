@@ -19,6 +19,8 @@ interface ICurveVoteEscrow {
     function increase_unlock_time(uint256) external;
     function withdraw() external;
     function smart_wallet_checker() external view returns (address);
+    function commit_smart_wallet_checker(address) external;
+    function apply_smart_wallet_checker() external;
 }
 
 interface IWalletChecker {
