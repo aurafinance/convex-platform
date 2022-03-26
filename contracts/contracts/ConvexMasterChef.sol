@@ -50,8 +50,6 @@ contract ConvexMasterChef is Ownable {
 
     //cvx
     IERC20 public immutable cvx;
-    // Block number when bonus CVX period ends.
-    uint256 public immutable bonusEndBlock;
     // CVX tokens created per block.
     uint256 public immutable rewardPerBlock;
     // Bonus muliplier for early cvx makers.
@@ -65,6 +63,7 @@ contract ConvexMasterChef is Ownable {
     uint256 public totalAllocPoint = 0;
     // The block number when CVX mining starts.
     uint256 public immutable startBlock;
+    uint256 public immutable endBlock;
 
     // Events
     event Deposit(address indexed user, uint256 indexed pid, uint256 amount);
@@ -80,12 +79,12 @@ contract ConvexMasterChef is Ownable {
         IERC20 _cvx,
         uint256 _rewardPerBlock,
         uint256 _startBlock,
-        uint256 _bonusEndBlock
+        uint256 _endBlock
     ) public {
         cvx = _cvx;
         rewardPerBlock = _rewardPerBlock;
-        bonusEndBlock = _bonusEndBlock;
         startBlock = _startBlock;
+        endBlock = _endBlock;
     }
 
     function poolLength() external view returns (uint256) {
@@ -144,16 +143,9 @@ contract ConvexMasterChef is Ownable {
         view
         returns (uint256)
     {
-        if (_to <= bonusEndBlock) {
-            return _to.sub(_from).mul(BONUS_MULTIPLIER);
-        } else if (_from >= bonusEndBlock) {
-            return _to.sub(_from);
-        } else {
-            return
-                bonusEndBlock.sub(_from).mul(BONUS_MULTIPLIER).add(
-                    _to.sub(bonusEndBlock)
-                );
-        }
+        uint256 clampedTo = _to > endBlock ? endBlock : _to;
+        uint256 clampedFrom = _from > endBlock ? endBlock : _from;
+        return clampedTo.sub(clampedFrom);
     }
 
     // View function to see pending CVXs on frontend.
