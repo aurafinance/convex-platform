@@ -6,10 +6,6 @@ import "@openzeppelin/contracts-0.6/math/SafeMath.sol";
 import "@openzeppelin/contracts-0.6/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts-0.6/token/ERC20/SafeERC20.sol";
 
-interface IRewardDeposit {
-    function addReward(address _token, uint256 _amount) external;
-}
-
 /**
  * @title   ExtraRewardStashTokenRescue
  * @author  ConvexFinance

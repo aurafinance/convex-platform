@@ -25,7 +25,8 @@ contract CurveVoterProxy {
 
     address public immutable escrow;
     address public immutable gaugeController;
-    
+    address public rewardDeposit;
+
     address public owner;
     address public operator;
     address public depositor;
@@ -56,6 +57,8 @@ contract CurveVoterProxy {
         escrow = _escrow;
         gaugeController = _gaugeController;
         owner = msg.sender;
+
+        protectedTokens[_crv] = true;
     }
 
     function getName() external pure returns (string memory) {
@@ -66,7 +69,11 @@ contract CurveVoterProxy {
         require(msg.sender == owner, "!auth");
         owner = _owner;
     }
-
+  
+    function setRewardDeposit(address _rewardDeposit) external {
+      require(msg.sender == owner, "!auth");
+      rewardDeposit = _rewardDeposit;
+    }
     /**
      * @notice Set the operator of the VoterProxy
      * @param _operator Address of the operator (Booster)
@@ -153,15 +160,12 @@ contract CurveVoterProxy {
      * @dev     Only callable a pool's stash contract
      */
     function withdraw(IERC20 _asset) external returns (uint256 balance) {
-        require(stashPool[msg.sender] == true, "!auth");
-
         //check protection
-        if(protectedTokens[address(_asset)] == true){
-            return 0;
-        }
+        require(protectedTokens[address(_asset)] == false, "protected");
 
         balance = _asset.balanceOf(address(this));
-        _asset.safeTransfer(msg.sender, balance);
+        _asset.approve(rewardDeposit, balance);
+        IRewardDeposit(rewardDeposit).addReward(address(_asset), balance);
         return balance;
     }
 
