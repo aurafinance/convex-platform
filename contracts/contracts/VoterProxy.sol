@@ -59,6 +59,7 @@ contract CurveVoterProxy {
         owner = msg.sender;
 
         protectedTokens[_crv] = true;
+        protectedTokens[_crvBpt] = true;
     }
 
     function getName() external pure returns (string memory) {
