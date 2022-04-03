@@ -2,16 +2,18 @@
 pragma solidity 0.6.12;
 
 import "./BaseRewardPool.sol";
-import "./interfaces/IBooster.sol";
 import "./interfaces/IERC4626.sol";
 import "@openzeppelin/contracts-0.6/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts-0.6/utils/ReentrancyGuard.sol";
+import "@openzeppelin/contracts-0.6/token/ERC20/SafeERC20.sol";
 
 /**
  * @dev see https://github.com/fei-protocol/ERC4626/blob/main/src/interfaces/IERC4626.sol#L58
  * assets:shares ratio is 1:1
  */
 contract BaseRewardPool4626 is BaseRewardPool, ReentrancyGuard, IERC4626 {
+    using SafeERC20 for IERC20;
+
     /**
      * @notice The address of the underlying ERC20 token used for
      * the Vault for accounting, depositing, and withdrawing.
@@ -30,8 +32,7 @@ contract BaseRewardPool4626 is BaseRewardPool, ReentrancyGuard, IERC4626 {
         address lptoken_
     ) public BaseRewardPool(pid_, stakingToken_, rewardToken_, operator_, rewardManager_) {
         asset = lptoken_;
-        IERC20(asset).approve(operator_, 0);
-        IERC20(asset).approve(operator_, type(uint256).max);
+        IERC20(asset).safeApprove(operator_, type(uint256).max);
     }
 
     /**
@@ -50,7 +51,7 @@ contract BaseRewardPool4626 is BaseRewardPool, ReentrancyGuard, IERC4626 {
      * depositing exactly `assets` of underlying tokens.
      */
     function deposit(uint256 assets, address receiver) public virtual override nonReentrant  returns (uint256) {
-        require(IERC20(asset).transferFrom(msg.sender, address(this), assets), "!transferFrom");
+        IERC20(asset).safeTransfer(address(this), assets);
         require(IDeposit(operator).deposit(pid, assets, false), "!deposit");
         _processStake(assets, receiver);
         emit Deposit(msg.sender, receiver, assets, assets);
