@@ -170,24 +170,12 @@ contract BaseRewardPool {
                 .add(rewards[account]);
     }
 
-    function _processStake(uint256 _amount, address _receiver) internal updateReward(_receiver) {
-        require(_amount > 0, 'RewardPool : Cannot stake 0');
-        
-        //also stake to linked rewards
-        for(uint i=0; i < extraRewards.length; i++){
-            IRewards(extraRewards[i]).stake(_receiver, _amount);
-        }
-
-        _totalSupply = _totalSupply.add(_amount);
-        _balances[_receiver] = _balances[_receiver].add(_amount);
-    }
-
     function stake(uint256 _amount)
         public 
         returns(bool)
     {
-
         _processStake(_amount, msg.sender);
+
         stakingToken.safeTransferFrom(msg.sender, address(this), _amount);
         emit Staked(msg.sender, _amount);
 
@@ -202,19 +190,9 @@ contract BaseRewardPool {
 
     function stakeFor(address _for, uint256 _amount)
         public
-        updateReward(_for)
         returns(bool)
     {
-        require(_amount > 0, 'RewardPool : Cannot stake 0');
-        
-        //also stake to linked rewards
-        for(uint i=0; i < extraRewards.length; i++){
-            IRewards(extraRewards[i]).stake(_for, _amount);
-        }
-
-        //give to _for
-        _totalSupply = _totalSupply.add(_amount);
-        _balances[_for] = _balances[_for].add(_amount);
+        _processStake(_amount, _for);
 
         //take away from sender
         stakingToken.safeTransferFrom(msg.sender, address(this), _amount);
@@ -223,6 +201,17 @@ contract BaseRewardPool {
         return true;
     }
 
+    function _processStake(uint256 _amount, address _receiver) internal updateReward(_receiver) {
+        require(_amount > 0, 'RewardPool : Cannot stake 0');
+        
+        //also stake to linked rewards
+        for(uint i=0; i < extraRewards.length; i++){
+            IRewards(extraRewards[i]).stake(_receiver, _amount);
+        }
+
+        _totalSupply = _totalSupply.add(_amount);
+        _balances[_receiver] = _balances[_receiver].add(_amount);
+    }
 
     function withdraw(uint256 amount, bool claim)
         public
