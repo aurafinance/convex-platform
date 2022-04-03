@@ -8,7 +8,7 @@ import "@openzeppelin/contracts-0.6/token/ERC20/IERC20.sol";
 /**
  * @dev see https://github.com/fei-protocol/ERC4626/blob/main/src/interfaces/IERC4626.sol#L58
  */
-contract VaultBaseRewardPool is BaseRewardPool {
+contract BaseRewardPool4626 is BaseRewardPool {
     /**
      * @notice The address of the underlying ERC20 token used for
      * the Vault for accounting, depositing, and withdrawing.
@@ -27,6 +27,7 @@ contract VaultBaseRewardPool is BaseRewardPool {
         address lptoken_
     ) public BaseRewardPool(pid_, stakingToken_, rewardToken_, operator_, rewardManager_) {
         asset = lptoken_;
+        IERC20(asset).approve(operator_, type(uint256).max);
     }
 
     event Deposit(address indexed sender, address indexed receiver, uint256 assets, uint256 shares);
@@ -44,7 +45,7 @@ contract VaultBaseRewardPool is BaseRewardPool {
     function deposit(uint256 assets, address receiver) public virtual returns (uint256) {
         IERC20(asset).transferFrom(msg.sender, address(this), assets);
         IDeposit(operator).deposit(pid, assets, false);
-        _processStake(assets);
+        _processStake(assets, receiver);
         emit Deposit(msg.sender, receiver, assets, assets);
         return assets;
     }

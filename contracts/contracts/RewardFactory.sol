@@ -2,7 +2,7 @@
 pragma solidity 0.6.12;
 
 import "./Interfaces.sol";
-import "./VaultBaseRewardPool.sol";
+import "./BaseRewardPool4626.sol";
 import "./VirtualBalanceRewardPool.sol";
 import "@openzeppelin/contracts-0.6/math/SafeMath.sol";
 import "@openzeppelin/contracts-0.6/token/ERC20/IERC20.sol";
@@ -58,7 +58,7 @@ contract RewardFactory {
 
         //operator = booster(deposit) contract so that new crv can be added and distributed
         //reward manager = this factory so that extra incentive tokens(ex. snx) can be linked to the main managed reward pool
-        BaseRewardPool rewardPool = new VaultBaseRewardPool(_pid,_depositToken,crv,operator, address(this), _lptoken);
+        BaseRewardPool4626 rewardPool = new BaseRewardPool4626(_pid,_depositToken,crv,operator, address(this), _lptoken);
 
         emit RewardPoolCreated(address(rewardPool), _pid, _depositToken);
         return address(rewardPool);

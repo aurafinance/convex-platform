@@ -170,16 +170,16 @@ contract BaseRewardPool {
                 .add(rewards[account]);
     }
 
-    function _processStake(uint256 _amount) internal updateReward(msg.sender) {
+    function _processStake(uint256 _amount, address _receiver) internal updateReward(_receiver) {
         require(_amount > 0, 'RewardPool : Cannot stake 0');
         
         //also stake to linked rewards
         for(uint i=0; i < extraRewards.length; i++){
-            IRewards(extraRewards[i]).stake(msg.sender, _amount);
+            IRewards(extraRewards[i]).stake(_receiver, _amount);
         }
 
         _totalSupply = _totalSupply.add(_amount);
-        _balances[msg.sender] = _balances[msg.sender].add(_amount);
+        _balances[_receiver] = _balances[_receiver].add(_amount);
     }
 
     function stake(uint256 _amount)
@@ -187,7 +187,7 @@ contract BaseRewardPool {
         returns(bool)
     {
 
-        _processStake(_amount);
+        _processStake(_amount, msg.sender);
         stakingToken.safeTransferFrom(msg.sender, address(this), _amount);
         emit Staked(msg.sender, _amount);
 
