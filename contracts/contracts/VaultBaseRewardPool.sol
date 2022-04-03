@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.6.12;
-pragma experimental ABIEncoderV2;
 
 import "./BaseRewardPool.sol";
 import "./interfaces/IBooster.sol";
@@ -24,9 +23,10 @@ contract VaultBaseRewardPool is BaseRewardPool {
         address stakingToken_,
         address rewardToken_,
         address operator_,
-        address rewardManager_
+        address rewardManager_,
+        address lptoken_
     ) public BaseRewardPool(pid_, stakingToken_, rewardToken_, operator_, rewardManager_) {
-        asset = IBooster(operator_).poolInfo(pid_).lptoken;
+        asset = lptoken_;
     }
 
     event Deposit(address indexed sender, address indexed receiver, uint256 assets, uint256 shares);

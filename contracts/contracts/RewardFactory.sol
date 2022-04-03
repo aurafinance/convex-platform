@@ -53,12 +53,12 @@ contract RewardFactory {
     /**
      * @notice Create a Managed Reward Pool to handle distribution of all crv mined in a pool
      */
-    function CreateCrvRewards(uint256 _pid, address _depositToken) external returns (address) {
+    function CreateCrvRewards(uint256 _pid, address _depositToken, address _lptoken) external returns (address) {
         require(msg.sender == operator, "!auth");
 
         //operator = booster(deposit) contract so that new crv can be added and distributed
         //reward manager = this factory so that extra incentive tokens(ex. snx) can be linked to the main managed reward pool
-        BaseRewardPool rewardPool = new VaultBaseRewardPool(_pid,_depositToken,crv,operator, address(this));
+        BaseRewardPool rewardPool = new VaultBaseRewardPool(_pid,_depositToken,crv,operator, address(this), _lptoken);
 
         emit RewardPoolCreated(address(rewardPool), _pid, _depositToken);
         return address(rewardPool);

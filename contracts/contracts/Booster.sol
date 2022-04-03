@@ -315,7 +315,7 @@ contract Booster{
         //create a tokenized deposit
         address token = ITokenFactory(tokenFactory).CreateDepositToken(_lptoken);
         //create a reward contract for crv rewards
-        address newRewardPool = IRewardFactory(rewardFactory).CreateCrvRewards(pid,token);
+        address newRewardPool = IRewardFactory(rewardFactory).CreateCrvRewards(pid,token,_lptoken);
         //create a stash to handle extra incentives
         address stash = IStashFactory(stashFactory).CreateStash(pid,_gauge,staker,_stashVersion);
 
