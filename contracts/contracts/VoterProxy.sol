@@ -26,6 +26,7 @@ contract CurveVoterProxy {
     address public immutable escrow;
     address public immutable gaugeController;
     address public rewardDeposit;
+    address public withdrawer;
 
     address public owner;
     address public operator;
@@ -45,11 +46,11 @@ contract CurveVoterProxy {
      *                          Controls liquidity gauges and the issuance of coins through the gauges
      */
     constructor(
-      address _mintr, 
-      address _crv,
-      address _crvBpt,
-      address _escrow,
-      address _gaugeController
+        address _mintr,
+        address _crv,
+        address _crvBpt,
+        address _escrow,
+        address _gaugeController
     ) public {
         mintr = _mintr; 
         crv = _crv;
@@ -70,11 +71,13 @@ contract CurveVoterProxy {
         require(msg.sender == owner, "!auth");
         owner = _owner;
     }
-  
-    function setRewardDeposit(address _rewardDeposit) external {
-      require(msg.sender == owner, "!auth");
-      rewardDeposit = _rewardDeposit;
+
+    function setRewardDeposit(address _withdrawer, address _rewardDeposit) external {
+        require(msg.sender == owner, "!auth");
+        withdrawer = _withdrawer;
+        rewardDeposit = _rewardDeposit;
     }
+
     /**
      * @notice Set the operator of the VoterProxy
      * @param _operator Address of the operator (Booster)
@@ -126,9 +129,9 @@ contract CurveVoterProxy {
      */
     function isValidSignature(bytes32 hash, bytes memory) public view returns (bytes4) {
         if(votes[hash]) {
-          return EIP1271_MAGIC_VALUE;
+            return EIP1271_MAGIC_VALUE;
         } else {
-          return 0xffffffff;
+            return 0xffffffff;
         }  
     }
 
@@ -161,7 +164,7 @@ contract CurveVoterProxy {
      * @dev     Only callable a pool's stash contract
      */
     function withdraw(IERC20 _asset) external returns (uint256 balance) {
-        //check protection
+        require(msg.sender == withdrawer, "!auth");
         require(protectedTokens[address(_asset)] == false, "protected");
 
         balance = _asset.balanceOf(address(this));
