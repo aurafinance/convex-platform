@@ -51,7 +51,7 @@ contract BaseRewardPool4626 is BaseRewardPool, ReentrancyGuard, IERC4626 {
      * depositing exactly `assets` of underlying tokens.
      */
     function deposit(uint256 assets, address receiver) public virtual override nonReentrant  returns (uint256) {
-        IERC20(asset).safeTransfer(address(this), assets);
+        IERC20(asset).safeTransferFrom(msg.sender, address(this), assets);
         require(IDeposit(operator).deposit(pid, assets, false), "!deposit");
         _processStake(assets, receiver);
         emit Deposit(msg.sender, receiver, assets, assets);
