@@ -1,15 +1,20 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.6.12;
 
-import "./BaseRewardPool.sol";
-import "./interfaces/IERC4626.sol";
-import "@openzeppelin/contracts-0.6/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts-0.6/utils/ReentrancyGuard.sol";
-import "@openzeppelin/contracts-0.6/token/ERC20/SafeERC20.sol";
+import { BaseRewardPool, IDeposit } from "./BaseRewardPool.sol";
+import { IERC4626 } from "./interfaces/IERC4626.sol";
+import { IERC20 } from "@openzeppelin/contracts-0.6/token/ERC20/IERC20.sol";
+import { ReentrancyGuard } from "@openzeppelin/contracts-0.6/utils/ReentrancyGuard.sol";
+import { SafeERC20} from "@openzeppelin/contracts-0.6/token/ERC20/SafeERC20.sol";
 
 /**
- * @dev see https://github.com/fei-protocol/ERC4626/blob/main/src/interfaces/IERC4626.sol#L58
- * assets:shares ratio is 1:1
+ * @title   BaseRewardPool4626
+ * @notice  Simply wraps the BaseRewardPool with the new IERC4626 Vault standard functions.
+ * @dev     See https://github.com/fei-protocol/ERC4626/blob/main/src/interfaces/IERC4626.sol#L58
+ *          This is not so much a vault as a Reward Pool, therefore asset:share ratio is always 1:1.
+ *          To create most utility for this RewardPool, the "asset" has been made to be the crvLP token,
+ *          as opposed to the cvxLP token. Therefore, users can easily deposit crvLP, and it will first
+ *          go to the Booster and mint the cvxLP before performing the normal staking function.
  */
 contract BaseRewardPool4626 is BaseRewardPool, ReentrancyGuard, IERC4626 {
     using SafeERC20 for IERC20;
@@ -42,19 +47,22 @@ contract BaseRewardPool4626 is BaseRewardPool, ReentrancyGuard, IERC4626 {
         return totalSupply();
     }
 
-    /*////////////////////////////////////////////////////////
-                      Deposit/Withdrawal Logic
-       */////////////////////////////////////////////////////*/
-
     /**
-     * @notice Mints `shares` Vault shares to `receiver` by
-     * depositing exactly `assets` of underlying tokens.
+     * @notice Mints `shares` Vault shares to `receiver`.
+     * @dev Because `asset` is not actually what is collected here, first wrap to required token in the booster.
      */
     function deposit(uint256 assets, address receiver) public virtual override nonReentrant  returns (uint256) {
+
+        // Transfer "asset" (crvLP) from sender
         IERC20(asset).safeTransferFrom(msg.sender, address(this), assets);
+        // Convert crvLP to cvxLP through normal booster deposit process, but don't stake
         require(IDeposit(operator).deposit(pid, assets, false), "!deposit");
+        
+        // Perform stake manually, now that the funds have been received
         _processStake(assets, receiver);
+
         emit Deposit(msg.sender, receiver, assets, assets);
+        emit Staked(receiver, assets);
         return assets;
     }
 
@@ -92,10 +100,6 @@ contract BaseRewardPool4626 is BaseRewardPool, ReentrancyGuard, IERC4626 {
     ) external virtual override returns (uint256) {
         return withdraw(shares, receiver, owner);
     }
-
-    /*////////////////////////////////////////////////////////
-                      Vault Accounting Logic
-    ////////////////////////////////////////////////////////*/
 
     /**
      * @notice The amount of shares that the vault would

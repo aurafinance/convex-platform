@@ -161,7 +161,8 @@ contract CurveVoterProxy {
 
     /**
      * @notice  Withdraw ERC20 tokens that have been distributed as extra rewards
-     * @dev     Only callable a pool's stash contract
+     * @dev     Tokens shouldn't end up here if they can help it. However, dao can
+     *          set a withdrawer that can process these to some ExtraRewardDistribution.
      */
     function withdraw(IERC20 _asset) external returns (uint256 balance) {
         require(msg.sender == withdrawer, "!auth");
