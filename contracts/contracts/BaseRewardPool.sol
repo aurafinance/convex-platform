@@ -51,10 +51,10 @@ import "@openzeppelin/contracts-0.6/token/ERC20/SafeERC20.sol";
  * @title   BaseRewardPool
  * @author  Synthetix -> ConvexFinance
  * @notice  Unipool rewards contract that is re-deployed from rFactory for each staking pool.
- * @dev     Changes made here are to do with the delayed reward allocation. Curve is queued for rewards
- *          and the distribution only begins once the new rewards are sufficiently large, or the epoch has ended.
- *          Additionally, enables hooks for `extraRewards` that can be enabled at any point to distribute a child
- *          reward token (i.e. a secondary one from Curve, or a seperate one)
+ * @dev     Changes made here by ConvexFinance are to do with the delayed reward allocation. Curve is queued for
+ *          rewards and the distribution only begins once the new rewards are sufficiently large, or the epoch
+ *          has ended. Additionally, enables hooks for `extraRewards` that can be enabled at any point to
+ *          distribute a child reward token (i.e. a secondary one from Curve, or a seperate one).
  */
 contract BaseRewardPool {
      using SafeMath for uint256;
@@ -201,6 +201,12 @@ contract BaseRewardPool {
         return true;
     }
 
+    /**
+     * @dev Generic internal staking function that basically does 3 things: update rewards based
+     *      on previous balance, trigger also on any child contracts, then update balances.
+     * @param _amount    Units to add to the users balance
+     * @param _receiver  Address of user who will receive the stake
+     */
     function _processStake(uint256 _amount, address _receiver) internal updateReward(_receiver) {
         require(_amount > 0, 'RewardPool : Cannot stake 0');
         
