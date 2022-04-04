@@ -42,10 +42,6 @@ contract BaseRewardPool4626 is BaseRewardPool, ReentrancyGuard, IERC4626 {
         return totalSupply();
     }
 
-    /*////////////////////////////////////////////////////////
-                      Deposit/Withdrawal Logic
-       */////////////////////////////////////////////////////*/
-
     /**
      * @notice Mints `shares` Vault shares to `receiver` by
      * depositing exactly `assets` of underlying tokens.
@@ -92,10 +88,6 @@ contract BaseRewardPool4626 is BaseRewardPool, ReentrancyGuard, IERC4626 {
     ) external virtual override returns (uint256) {
         return withdraw(shares, receiver, owner);
     }
-
-    /*////////////////////////////////////////////////////////
-                      Vault Accounting Logic
-    ////////////////////////////////////////////////////////*/
 
     /**
      * @notice The amount of shares that the vault would
