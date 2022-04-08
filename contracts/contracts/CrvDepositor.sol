@@ -205,13 +205,4 @@ contract CrvDepositor{
         uint256 crvBal = IERC20(crvBpt).balanceOf(msg.sender);
         deposit(crvBal,_lock,_stakeAddress);
     }
-
-    /**
-     * @dev calls migrate on the VoterProxy. Only callable by the dao and
-     * once cooldown period is set
-     */
-    function migrate(address to) external {
-      require(msg.sender == daoOperator, "!auth");
-      IStaker(staker).migrate(to);
-    }
 }

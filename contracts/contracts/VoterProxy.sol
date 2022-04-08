@@ -41,6 +41,7 @@ contract CurveVoterProxy {
     /**
      * @param _mintr            CRV minter
      * @param _crv              CRV Token address
+     * @param _crvBpt           CRV:ETH 80-20 BPT Token address
      * @param _escrow           Curve Voting escrow contract
      * @param _gaugeController  Curve Gauge Controller
      *                          Controls liquidity gauges and the issuance of coins through the gauges
@@ -64,7 +65,7 @@ contract CurveVoterProxy {
     }
 
     function getName() external pure returns (string memory) {
-        return "CurveVoterProxy";
+        return "BalancerVoterProxy";
     }
 
     function setOwner(address _owner) external {
@@ -254,13 +255,6 @@ contract CurveVoterProxy {
         require(msg.sender == depositor, "!auth");
         ICurveVoteEscrow(escrow).withdraw();
         return true;
-    }
-
-    function migrate(address to) external {
-        require(msg.sender == depositor, "!auth");
-        require(release(), "!release");
-        uint256 balance = IERC20(crvBpt).balanceOf(address(this));
-        IERC20(crvBpt).safeTransfer(to, balance);
     }
 
     /**
