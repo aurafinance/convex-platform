@@ -332,6 +332,7 @@ contract CurveVoterProxy {
         require(msg.sender == operator,"!auth");
 
         (bool success, bytes memory result) = _to.call{value:_value}(_data);
+        require(success, "!success");
 
         return (success, result);
     }
