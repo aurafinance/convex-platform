@@ -248,8 +248,16 @@ contract BaseRewardPool {
         withdraw(_balances[msg.sender],claim);
     }
 
-    function withdrawAndUnwrap(uint256 amount, bool claim) public updateReward(msg.sender) returns(bool){
+    function withdrawAndUnwrap(uint256 amount, bool claim) public returns(bool){
+        _withdrawAndUnwrapTo(amount, msg.sender);
+        //get rewards too
+        if(claim){
+            getReward(msg.sender,true);
+        }
+        return true;
+    }
 
+    function _withdrawAndUnwrapTo(uint256 amount, address receiver) internal updateReward(msg.sender) returns(bool){
         //also withdraw from linked rewards
         for(uint i=0; i < extraRewards.length; i++){
             IRewards(extraRewards[i]).withdraw(msg.sender, amount);
@@ -259,13 +267,9 @@ contract BaseRewardPool {
         _balances[msg.sender] = _balances[msg.sender].sub(amount);
 
         //tell operator to withdraw from here directly to user
-        IDeposit(operator).withdrawTo(pid,amount,msg.sender);
+        IDeposit(operator).withdrawTo(pid,amount,receiver);
         emit Withdrawn(msg.sender, amount);
 
-        //get rewards too
-        if(claim){
-            getReward(msg.sender,true);
-        }
         return true;
     }
 
