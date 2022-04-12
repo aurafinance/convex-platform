@@ -146,7 +146,7 @@ contract ClaimZap{
 
         uint256 crvBalance = IERC20(crv).balanceOf(msg.sender);
         uint256 cvxBalance = IERC20(cvx).balanceOf(msg.sender);
- 
+
         //claim from main curve LP pools
         for(uint256 i = 0; i < rewardContracts.length; i++){
             IBasicRewards(rewardContracts[i]).getReward(msg.sender,true);
@@ -236,4 +236,4 @@ contract ClaimZap{
         }
     }
 
-}
+} 
