@@ -83,8 +83,10 @@ contract BaseRewardPool4626 is BaseRewardPool, ReentrancyGuard, IERC4626 {
         address receiver,
         address owner
     ) public virtual override nonReentrant returns (uint256) {
-        require(receiver == msg.sender && owner == msg.sender, "!sender");
-        withdrawAndUnwrap(assets, true);
+        require(owner == msg.sender, "!owner");
+        
+        _withdrawAndUnwrapTo(assets, receiver);
+
         emit Withdraw(msg.sender, receiver, assets, assets);
         return assets;
     }
@@ -126,7 +128,7 @@ contract BaseRewardPool4626 is BaseRewardPool, ReentrancyGuard, IERC4626 {
      * `deposit` call.
      */
     function maxDeposit(address owner) public view virtual override returns (uint256) {
-        return IERC20(asset).balanceOf(owner);
+        return type(uint256).max;
     }
 
     /**
