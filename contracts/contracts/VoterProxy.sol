@@ -169,6 +169,7 @@ contract CurveVoterProxy {
         require(protectedTokens[address(_asset)] == false, "protected");
 
         balance = _asset.balanceOf(address(this));
+        _asset.approve(rewardDeposit, 0);
         _asset.approve(rewardDeposit, balance);
         IRewardDeposit(rewardDeposit).addReward(address(_asset), balance);
         return balance;
