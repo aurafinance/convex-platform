@@ -5,7 +5,7 @@ import { BaseRewardPool, IDeposit } from "./BaseRewardPool.sol";
 import { IERC4626 } from "./interfaces/IERC4626.sol";
 import { IERC20 } from "@openzeppelin/contracts-0.6/token/ERC20/IERC20.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts-0.6/utils/ReentrancyGuard.sol";
-import { SafeERC20} from "@openzeppelin/contracts-0.6/token/ERC20/SafeERC20.sol";
+import { SafeERC20 } from "@openzeppelin/contracts-0.6/token/ERC20/SafeERC20.sol";
 
 /**
  * @title   BaseRewardPool4626
@@ -41,8 +41,8 @@ contract BaseRewardPool4626 is BaseRewardPool, ReentrancyGuard, IERC4626 {
     }
 
     /**
-    * @notice Total amount of the underlying asset that is "managed" by Vault.
-    */
+     * @notice Total amount of the underlying asset that is "managed" by Vault.
+     */
     function totalAssets() external view virtual override returns(uint256){
         return totalSupply();
     }
@@ -51,13 +51,17 @@ contract BaseRewardPool4626 is BaseRewardPool, ReentrancyGuard, IERC4626 {
      * @notice Mints `shares` Vault shares to `receiver`.
      * @dev Because `asset` is not actually what is collected here, first wrap to required token in the booster.
      */
-    function deposit(uint256 assets, address receiver) public virtual override nonReentrant  returns (uint256) {
-
+    function deposit(uint256 assets, address receiver) public virtual override nonReentrant returns (uint256) {
         // Transfer "asset" (crvLP) from sender
         IERC20(asset).safeTransferFrom(msg.sender, address(this), assets);
+
         // Convert crvLP to cvxLP through normal booster deposit process, but don't stake
-        require(IDeposit(operator).deposit(pid, assets, false), "!deposit");
-        
+        uint256 balBefore = stakingToken.balanceOf(address(this));
+        IDeposit(operator).deposit(pid, assets, false);
+        uint256 balAfter = stakingToken.balanceOf(address(this));
+
+        require(balAfter - balBefore == assets, "!deposit");
+
         // Perform stake manually, now that the funds have been received
         _processStake(assets, receiver);
 
