@@ -5,7 +5,7 @@ import { BaseRewardPool, IDeposit } from "./BaseRewardPool.sol";
 import { IERC4626 } from "./interfaces/IERC4626.sol";
 import { IERC20 } from "@openzeppelin/contracts-0.6/token/ERC20/IERC20.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts-0.6/utils/ReentrancyGuard.sol";
-import { SafeERC20} from "@openzeppelin/contracts-0.6/token/ERC20/SafeERC20.sol";
+import { SafeERC20 } from "@openzeppelin/contracts-0.6/token/ERC20/SafeERC20.sol";
 
 /**
  * @title   BaseRewardPool4626
@@ -41,9 +41,9 @@ contract BaseRewardPool4626 is BaseRewardPool, ReentrancyGuard, IERC4626 {
     }
 
     /**
-    * @notice Total amount of the underlying asset that is "managed" by Vault.
-    */
-    function totalAssets() external view virtual override returns(uint256){
+     * @notice Total amount of the underlying asset that is "managed" by Vault.
+     */
+    function totalAssets() external view virtual override returns (uint256) {
         return totalSupply();
     }
 
@@ -51,13 +51,17 @@ contract BaseRewardPool4626 is BaseRewardPool, ReentrancyGuard, IERC4626 {
      * @notice Mints `shares` Vault shares to `receiver`.
      * @dev Because `asset` is not actually what is collected here, first wrap to required token in the booster.
      */
-    function deposit(uint256 assets, address receiver) public virtual override nonReentrant  returns (uint256) {
-
+    function deposit(uint256 assets, address receiver) public virtual override nonReentrant returns (uint256) {
         // Transfer "asset" (crvLP) from sender
         IERC20(asset).safeTransferFrom(msg.sender, address(this), assets);
+
         // Convert crvLP to cvxLP through normal booster deposit process, but don't stake
+        (, address depositToken, , , , ) = IDeposit(operator).poolInfo(pid);
+        uint256 cvxLpBalanceBefore = IERC20(depositToken).balanceOf(address(this));
         require(IDeposit(operator).deposit(pid, assets, false), "!deposit");
-        
+        uint256 cvxLpBalanceAfter = IERC20(depositToken).balanceOf(address(this));
+        require(cvxLpBalanceAfter - cvxLpBalanceBefore >= assets, "depositToken < assets");
+
         // Perform stake manually, now that the funds have been received
         _processStake(assets, receiver);
 
@@ -135,8 +139,8 @@ contract BaseRewardPool4626 is BaseRewardPool, ReentrancyGuard, IERC4626 {
      * @notice Allows an on-chain or off-chain user to simulate
      * the effects of their deposit at the current block, given
      * current on-chain conditions.
-     */    
-    function previewDeposit(uint256 assets) external view virtual override returns(uint256){
+     */
+    function previewDeposit(uint256 assets) external view virtual override returns (uint256) {
         return convertToShares(assets);
     }
 
@@ -149,12 +153,12 @@ contract BaseRewardPool4626 is BaseRewardPool, ReentrancyGuard, IERC4626 {
         return maxDeposit(owner);
     }
 
-    /**    
+    /**
      * @notice Allows an on-chain or off-chain user to simulate
      * the effects of their mint at the current block, given
      * current on-chain conditions.
      */
-    function previewMint(uint256 shares) external view virtual override returns(uint256){
+    function previewMint(uint256 shares) external view virtual override returns (uint256) {
         return convertToAssets(shares);
     }
 
@@ -167,12 +171,12 @@ contract BaseRewardPool4626 is BaseRewardPool, ReentrancyGuard, IERC4626 {
         return balanceOf(owner);
     }
 
-    /**    
+    /**
      * @notice Allows an on-chain or off-chain user to simulate
      * the effects of their withdrawal at the current block,
      * given current on-chain conditions.
      */
-    function previewWithdraw(uint256 assets) public view virtual override returns(uint256 shares){
+    function previewWithdraw(uint256 assets) public view virtual override returns (uint256 shares) {
         return convertToShares(assets);
     }
 
@@ -184,12 +188,14 @@ contract BaseRewardPool4626 is BaseRewardPool, ReentrancyGuard, IERC4626 {
     function maxRedeem(address owner) external view virtual override returns (uint256) {
         return maxWithdraw(owner);
     }
-    /**    
+
+    /**
      * @notice Allows an on-chain or off-chain user to simulate
      * the effects of their redeemption at the current block,
      * given current on-chain conditions.
      */
-    function previewRedeem(uint256 shares) external view virtual override returns(uint256){
+    function previewRedeem(uint256 shares) external view virtual override returns (uint256) {
         return previewWithdraw(shares);
     }
 }
+
