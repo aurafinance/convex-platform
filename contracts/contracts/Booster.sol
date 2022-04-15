@@ -506,10 +506,10 @@ contract Booster{
     /**
      * @notice set valid vote hash on VoterProxy 
      */
-    function setVote(bytes32 hash, bool valid) external returns(bool){
+    function setVote(bytes32 _hash, bool valid) external returns(bool){
         require(msg.sender == voteDelegate, "!auth");
         
-        IStaker(staker).setVote(hash, valid);
+        IStaker(staker).setVote(_hash, valid);
         return true;
     }
 
