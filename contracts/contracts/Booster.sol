@@ -100,7 +100,6 @@ contract Booster{
         address _voteOwnership,
         address _voteParameter
     ) public {
-        isShutdown = false;
         staker = _staker;
         minter = _minter;
         crv = _crv;
@@ -217,6 +216,7 @@ contract Booster{
      */
     function setFeeInfo(address _feeDistro) external {
         require(msg.sender==owner, "!auth");
+        require(!isShutdown, "shutdown");
         
         // require _feeDistro not exists
         require(fees[_feeDistro].token == address(0), "Already exists");
@@ -224,6 +224,7 @@ contract Booster{
 
         address feeToken = IFeeDistro(_feeDistro).token();
         require(feeToken != address(0), "Fee distro not initialised");
+        require(!gaugeMap[feeToken], "Invalid token");
 
         // Distributed directly
         if(feeToken == crv){
@@ -637,16 +638,21 @@ contract Booster{
      *         lockFees is the secondary reward contract that uses the virtual balances from cvxCrv
      */
     function earmarkFees(address _feeDistro) external returns(bool){
+        require(!isShutdown,"shutdown");
         FeeDistro memory distro = fees[_feeDistro];
         
         require(distro.active, "Inactive distro");
+        require(!gaugeMap[distro.token], "Invalid token");
 
         //claim fee rewards
+        uint256 tokenBalanceBefore = IERC20(distro.token).balanceOf(address(this));
         IStaker(staker).claimFees(_feeDistro, distro.token);
+        uint256 tokenBalanceAfter = IERC20(distro.token).balanceOf(address(this));
+        uint256 feesClaimed = tokenBalanceAfter.sub(tokenBalanceBefore);
+
         //send fee rewards to reward contract
-        uint256 _balance = IERC20(distro.token).balanceOf(address(this));
-        IERC20(distro.token).safeTransfer(distro.rewards, _balance);
-        IRewards(distro.rewards).queueNewRewards(_balance);
+        IERC20(distro.token).safeTransfer(distro.rewards, feesClaimed);
+        IRewards(distro.rewards).queueNewRewards(feesClaimed);
 
         return true;
     }
