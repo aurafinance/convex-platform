@@ -6,8 +6,8 @@ interface IOwner {
     //booster
     function setFactories(address _rfactory, address _sfactory, address _tfactory) external;
     function setArbitrator(address _arb) external;
-    function setFeeInfo(address _feeDistro) external;
-    function updateFeeInfo(address _feeDistro, bool _active) external;
+    function setFeeInfo(address _feeToken, address _feeDistro) external;
+    function updateFeeInfo(address _feeToken, bool _active) external;
     function shutdownSystem() external;
     function isShutdown() external view returns(bool);
     function poolLength() external view returns(uint256);
@@ -118,12 +118,12 @@ contract BoosterOwner{
         IOwner(booster).setArbitrator(_arb);
     }
 
-    function setFeeInfo(address _feeDistro) external onlyOwner{
-        IOwner(booster).setFeeInfo(_feeDistro);
+    function setFeeInfo(address _feeToken, address _feeDistro) external onlyOwner{
+        IOwner(booster).setFeeInfo(_feeToken, _feeDistro);
     }
 
-    function updateFeeInfo(address _feeDistro, bool _active) external onlyOwner{
-        IOwner(booster).updateFeeInfo(_feeDistro, _active);
+    function updateFeeInfo(address _feeToken, bool _active) external onlyOwner{
+        IOwner(booster).updateFeeInfo(_feeToken, _active);
     }
 
     function setFeeManager(address _feeM) external onlyOwner{
