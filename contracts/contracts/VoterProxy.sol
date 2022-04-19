@@ -271,7 +271,7 @@ contract VoterProxy {
      * @notice  Withdraw all CRV from Curve's voting escrow contract
      * @dev     Only callable by CrvDepositor and can only withdraw if lock has expired
      */
-    function release() public returns(bool){
+    function release() external returns(bool){
         require(msg.sender == depositor, "!auth");
         ICurveVoteEscrow(escrow).withdraw();
         return true;
@@ -331,7 +331,7 @@ contract VoterProxy {
      */
     function claimFees(address _distroContract, address _token) external returns (uint256){
         require(msg.sender == operator, "!auth");
-        IFeeDistro(_distroContract).claim();
+        IFeeDistributor(_distroContract).claimToken(address(this), _token);
         uint256 _balance = IERC20(_token).balanceOf(address(this));
         IERC20(_token).safeTransfer(operator, _balance);
         return _balance;
