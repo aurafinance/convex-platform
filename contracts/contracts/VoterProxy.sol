@@ -91,10 +91,11 @@ contract VoterProxy {
      * @param _gaugeController External gauge controller address
      * @param _mintr Token minter address for claiming rewards
      */
-    function setSystemConfig(address _gaugeController, address _mintr) external {
+    function setSystemConfig(address _gaugeController, address _mintr) external returns (bool) {
         require(msg.sender == owner, "!auth");
         gaugeController = _gaugeController;
         mintr = _mintr;
+        return true;
     }
 
     /**
