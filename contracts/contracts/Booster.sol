@@ -23,8 +23,8 @@ contract Booster{
     address public immutable voteOwnership;
     address public immutable voteParameter;
 
-    uint256 public lockIncentive = 550; //incentive to crv stakers
-    uint256 public stakerIncentive = 1100; //incentive to native token stakers
+    uint256 public lockIncentive = 825; //incentive to crv stakers
+    uint256 public stakerIncentive = 825; //incentive to native token stakers
     uint256 public earmarkIncentive = 50; //incentive to users who spend gas to make calls
     uint256 public platformFee = 0; //possible fee to build treasury
     uint256 public constant MaxFees = 2500;
