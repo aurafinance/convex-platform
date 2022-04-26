@@ -71,13 +71,15 @@ contract BoosterOwner{
         address _poolManager,
         address _booster,
         address _stashFactory,
-        address _rescueStash
+        address _rescueStash,
+        bool _seal
     ) public {
         owner = _owner;
         poolManager = _poolManager;
         booster = _booster;
         stashFactory = _stashFactory;
         rescueStash = _rescueStash;
+        isSealed = _seal;
     }
 
     modifier onlyOwner() {
