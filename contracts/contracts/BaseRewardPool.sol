@@ -316,6 +316,13 @@ contract BaseRewardPool {
         queuedRewards = queuedRewards.add(_amount);
     }
 
+    function processIdleRewards() external {
+        if (block.timestamp >= periodFinish) {
+            notifyRewardAmount(queuedRewards);
+            queuedRewards = 0;
+        }
+    }
+
     /**
      * @dev Called by the booster to allocate new Crv rewards to this pool
      *      Curve is queued for rewards and the distribution only begins once the new rewards are sufficiently
