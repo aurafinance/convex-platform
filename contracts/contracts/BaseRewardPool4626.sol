@@ -208,14 +208,18 @@ contract BaseRewardPool4626 is BaseRewardPool, ReentrancyGuard, IERC4626 {
      * @dev Returns the name of the token.
      */
     function name() external view override returns (string memory) {
-        return IERC20Metadata(address(stakingToken)).name();
+        return string(
+            abi.encodePacked(IERC20Metadata(address(stakingToken)).name(), " Vault")
+        );
     }
 
     /**
      * @dev Returns the symbol of the token.
      */
     function symbol() external view override returns (string memory) {
-        return IERC20Metadata(address(stakingToken)).symbol();
+        return string(
+            abi.encodePacked(IERC20Metadata(address(stakingToken)).symbol(), "-vault")
+        );
     }
 
     /**
