@@ -317,6 +317,17 @@ contract BaseRewardPool {
     }
 
     /**
+     * @dev Processes queued rewards in isolation, providing the period has finished.
+     *      This allows a cheaper way to trigger rewards on low value pools.
+     */
+    function processIdleRewards() external {
+        if (block.timestamp >= periodFinish && queuedRewards > 0) {
+            notifyRewardAmount(queuedRewards);
+            queuedRewards = 0;
+        }
+    }
+
+    /**
      * @dev Called by the booster to allocate new Crv rewards to this pool
      *      Curve is queued for rewards and the distribution only begins once the new rewards are sufficiently
      *      large, or the epoch has ended.
