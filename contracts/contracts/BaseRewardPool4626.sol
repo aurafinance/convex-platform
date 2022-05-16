@@ -91,7 +91,7 @@ contract BaseRewardPool4626 is BaseRewardPool, ReentrancyGuard, IERC4626 {
         
         _withdrawAndUnwrapTo(assets, receiver);
 
-        emit Withdraw(msg.sender, receiver, assets, assets);
+        emit Withdraw(msg.sender, receiver, owner, assets, assets);
         return assets;
     }
 
