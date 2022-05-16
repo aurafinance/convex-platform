@@ -316,8 +316,12 @@ contract BaseRewardPool {
         queuedRewards = queuedRewards.add(_amount);
     }
 
+    /**
+     * @dev Processes queued rewards in isolation, providing the period has finished.
+     *      This allows a cheaper way to trigger rewards on low value pools.
+     */
     function processIdleRewards() external {
-        if (block.timestamp >= periodFinish) {
+        if (block.timestamp >= periodFinish && queuedRewards > 0) {
             notifyRewardAmount(queuedRewards);
             queuedRewards = 0;
         }
