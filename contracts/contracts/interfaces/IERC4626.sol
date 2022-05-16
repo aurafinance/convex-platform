@@ -12,20 +12,20 @@ abstract contract IERC4626 is IERC20Metadata {
                       Events
     ////////////////////////////////////////////////////////*/
 
-    /// @notice `sender` has exchanged `assets` for `shares`,
-    /// and transferred those `shares` to `receiver`.
+    /// @notice `caller` has exchanged `assets` for `shares`, and transferred those `shares` to `owner`
     event Deposit(
-        address indexed sender,
-        address indexed receiver,
+        address indexed caller,
+        address indexed owner,
         uint256 assets,
         uint256 shares
     );
 
-    /// @notice `sender` has exchanged `shares` for `assets`,
-    /// and transferred those `assets` to `receiver`.
+    /// @notice `caller` has exchanged `shares`, owned by `owner`, for
+    ///         `assets`, and transferred those `assets` to `receiver`.
     event Withdraw(
-        address indexed sender,
+        address indexed caller,
         address indexed receiver,
+        address indexed owner,
         uint256 assets,
         uint256 shares
     );
