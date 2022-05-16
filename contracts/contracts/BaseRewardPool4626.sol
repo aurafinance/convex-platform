@@ -93,9 +93,9 @@ contract BaseRewardPool4626 is BaseRewardPool, ReentrancyGuard, IERC4626 {
             _approve(owner, msg.sender, _allowances[owner][msg.sender].sub(assets, "ERC20: withdrawal amount exceeds allowance"));
         }
         
-        _withdrawAndUnwrapTo(assets, receiver);
+        _withdrawAndUnwrapTo(assets, owner, receiver);
 
-        emit Withdraw(msg.sender, receiver, assets, assets);
+        emit Withdraw(owner, receiver, assets, assets);
         return assets;
     }
 
