@@ -25,6 +25,8 @@ contract BaseRewardPool4626 is BaseRewardPool, ReentrancyGuard, IERC4626 {
      */
     address public override asset;
 
+    mapping (address => mapping (address => uint256)) private _allowances;
+
     /**
      * @dev See BaseRewardPool.sol
      */
@@ -87,7 +89,9 @@ contract BaseRewardPool4626 is BaseRewardPool, ReentrancyGuard, IERC4626 {
         address receiver,
         address owner
     ) public virtual override nonReentrant returns (uint256) {
-        require(owner == msg.sender, "!owner");
+        if (msg.sender != owner) {
+            _approve(owner, msg.sender, _allowances[owner][msg.sender].sub(assets, "ERC20: withdrawal amount exceeds allowance"));
+        }
         
         _withdrawAndUnwrapTo(assets, receiver);
 
@@ -246,20 +250,35 @@ contract BaseRewardPool4626 is BaseRewardPool, ReentrancyGuard, IERC4626 {
         revert("Not supported");
     }
 
+
     /**
-     * @dev Returns the remaining number of tokens that `spender` will be
-     * allowed to spend on behalf of `owner` through {transferFrom}. This is
-     * zero by default.
+     * @dev See {IERC20-allowance}.
      */
-    function allowance(address /* owner */, address /* spender */) external view override returns (uint256) {
-        return 0;
+    function allowance(address owner, address spender) public view virtual override returns (uint256) {
+        return _allowances[owner][spender];
     }
 
     /**
-     * @dev Sets `amount` as the allowance of `spender` over the caller's tokens.
+     * @dev See {IERC20-approve}.
+     *
+     * Requirements:
+     *
+     * - `spender` cannot be the zero address.
      */
-    function approve(address /* spender */, uint256 /* amount */) external override returns (bool) {
-        return false;
+    function approve(address spender, uint256 amount) public virtual override returns (bool) {
+        _approve(msg.sender, spender, amount);
+        return true;
+    }
+
+    /**
+     * @dev Sets `amount` as the allowance of `spender` over the `owner` s tokens.
+     */
+    function _approve(address owner, address spender, uint256 amount) internal virtual {
+        require(owner != address(0), "ERC20: approve from the zero address");
+        require(spender != address(0), "ERC20: approve to the zero address");
+
+        _allowances[owner][spender] = amount;
+        emit Approval(owner, spender, amount);
     }
 
     /**
