@@ -2,7 +2,7 @@
 pragma solidity 0.6.12;
 
 import { BaseRewardPool, IDeposit } from "./BaseRewardPool.sol";
-import { IERC4626 } from "./interfaces/IERC4626.sol";
+import { IERC4626, IERC20Metadata } from "./interfaces/IERC4626.sol";
 import { IERC20 } from "@openzeppelin/contracts-0.6/token/ERC20/IERC20.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts-0.6/utils/ReentrancyGuard.sol";
 import { SafeERC20 } from "@openzeppelin/contracts-0.6/token/ERC20/SafeERC20.sol";
@@ -131,7 +131,7 @@ contract BaseRewardPool4626 is BaseRewardPool, ReentrancyGuard, IERC4626 {
      * corresponds to the input parameter `receiver` of a
      * `deposit` call.
      */
-    function maxDeposit(address owner) public view virtual override returns (uint256) {
+    function maxDeposit(address /* owner */) public view virtual override returns (uint256) {
         return type(uint256).max;
     }
 
@@ -195,5 +195,79 @@ contract BaseRewardPool4626 is BaseRewardPool, ReentrancyGuard, IERC4626 {
      */
     function previewRedeem(uint256 shares) external view virtual override returns(uint256){
         return previewWithdraw(shares);
+    }
+
+
+    /* ========== IERC20 ========== */
+
+    /**
+     * @dev Returns the name of the token.
+     */
+    function name() external view override returns (string memory) {
+        return IERC20Metadata(address(stakingToken)).name();
+    }
+
+    /**
+     * @dev Returns the symbol of the token.
+     */
+    function symbol() external view override returns (string memory) {
+        return IERC20Metadata(address(stakingToken)).symbol();
+    }
+
+    /**
+     * @dev Returns the decimals places of the token.
+     */
+    function decimals() external view override returns (uint8) {
+        return 18;
+    }
+
+    /**
+     * @dev Returns the amount of tokens in existence.
+     */
+    function totalSupply() public view override(BaseRewardPool, IERC20) returns (uint256) {
+        return BaseRewardPool.totalSupply();
+    }
+
+    /**
+     * @dev Returns the amount of tokens owned by `account`.
+     */
+    function balanceOf(address account) public view override(BaseRewardPool, IERC20) returns (uint256) {
+        return BaseRewardPool.balanceOf(account);
+    }
+
+    /**
+     * @dev Moves `amount` tokens from the caller's account to `recipient`.
+     *
+     * Returns a boolean value indicating whether the operation succeeded.
+     *
+     * Emits a {Transfer} event.
+     */
+    function transfer(address /* recipient */, uint256 /* amount */) external override returns (bool) {
+        revert("Not supported");
+    }
+
+    /**
+     * @dev Returns the remaining number of tokens that `spender` will be
+     * allowed to spend on behalf of `owner` through {transferFrom}. This is
+     * zero by default.
+     */
+    function allowance(address /* owner */, address /* spender */) external view override returns (uint256) {
+        return 0;
+    }
+
+    /**
+     * @dev Sets `amount` as the allowance of `spender` over the caller's tokens.
+     */
+    function approve(address /* spender */, uint256 /* amount */) external override returns (bool) {
+        return false;
+    }
+
+    /**
+     * @dev Moves `amount` tokens from `sender` to `recipient` using the
+     * allowance mechanism. `amount` is then deducted from the caller's
+     * allowance.
+     */
+    function transferFrom(address /* sender */, address /* recipient */, uint256 /* amount */) external override returns (bool) {
+        revert("Not supported");
     }
 }

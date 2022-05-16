@@ -110,11 +110,11 @@ contract BaseRewardPool {
         rewardManager = rewardManager_;
     }
 
-    function totalSupply() public view returns (uint256) {
+    function totalSupply() public view virtual returns (uint256) {
         return _totalSupply;
     }
 
-    function balanceOf(address account) public view returns (uint256) {
+    function balanceOf(address account) public view virtual returns (uint256) {
         return _balances[account];
     }
 
