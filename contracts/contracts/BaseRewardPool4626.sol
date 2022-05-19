@@ -90,7 +90,7 @@ contract BaseRewardPool4626 is BaseRewardPool, ReentrancyGuard, IERC4626 {
         address owner
     ) public virtual override nonReentrant returns (uint256) {
         if (msg.sender != owner) {
-            _approve(owner, msg.sender, _allowances[owner][msg.sender].sub(assets, "ERC20: withdrawal amount exceeds allowance"));
+            _approve(owner, msg.sender, _allowances[owner][msg.sender].sub(assets, "ERC4626: withdrawal amount exceeds allowance"));
         }
         
         _withdrawAndUnwrapTo(assets, owner, receiver);
@@ -251,7 +251,7 @@ contract BaseRewardPool4626 is BaseRewardPool, ReentrancyGuard, IERC4626 {
      * Emits a {Transfer} event.
      */
     function transfer(address /* recipient */, uint256 /* amount */) external override returns (bool) {
-        revert("Not supported");
+        revert("ERC4626: Not supported");
     }
 
 
@@ -278,8 +278,8 @@ contract BaseRewardPool4626 is BaseRewardPool, ReentrancyGuard, IERC4626 {
      * @dev Sets `amount` as the allowance of `spender` over the `owner` s tokens.
      */
     function _approve(address owner, address spender, uint256 amount) internal virtual {
-        require(owner != address(0), "ERC20: approve from the zero address");
-        require(spender != address(0), "ERC20: approve to the zero address");
+        require(owner != address(0), "ERC4626: approve from the zero address");
+        require(spender != address(0), "ERC4626: approve to the zero address");
 
         _allowances[owner][spender] = amount;
         emit Approval(owner, spender, amount);
@@ -291,6 +291,6 @@ contract BaseRewardPool4626 is BaseRewardPool, ReentrancyGuard, IERC4626 {
      * allowance.
      */
     function transferFrom(address /* sender */, address /* recipient */, uint256 /* amount */) external override returns (bool) {
-        revert("Not supported");
+        revert("ERC4626: Not supported");
     }
 }
