@@ -370,7 +370,7 @@ contract Booster{
     }
 
     /**
-     * @notice Shuts down the WHOLE SYSTEM by withdrawing all the LP tokens ot here and then allowing
+     * @notice Shuts down the WHOLE SYSTEM by withdrawing all the LP tokens to here and then allowing
      *         for subsequent withdrawal by any depositors.
      */
     function shutdownSystem() external{
@@ -567,7 +567,7 @@ contract Booster{
 
     /**
      * @notice Basically a hugely pivotal function.
-     *         Repsonsible for collecting the crv from gauge, and then redistributing to the correct place.
+     *         Responsible for collecting the crv from gauge, and then redistributing to the correct place.
      *         Pays the caller a fee to process this.
      */
     function _earmarkRewards(uint256 _pid) internal {
@@ -629,7 +629,7 @@ contract Booster{
 
     /**
      * @notice Basically a hugely pivotal function.
-     *         Repsonsible for collecting the crv from gauge, and then redistributing to the correct place.
+     *         Responsible for collecting the crv from gauge, and then redistributing to the correct place.
      *         Pays the caller a fee to process this.
      */
     function earmarkRewards(uint256 _pid) external returns(bool){
