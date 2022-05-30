@@ -106,7 +106,7 @@ contract CrvDepositor{
     //lock curve
     function _lockCurve() internal {
         if(cooldown) {
-          return;
+            return;
         }
 
         uint256 crvBalance = IERC20(crvBpt).balanceOf(address(this));
@@ -127,8 +127,8 @@ contract CrvDepositor{
         uint256 unlockAt = block.timestamp + MAXTIME;
         uint256 unlockInWeeks = (unlockAt/WEEK)*WEEK;
 
-        //increase time too if over 2 week buffer
-        if(unlockInWeeks.sub(unlockTime) > 2){
+        //increase time too if over 1 week buffer
+        if(unlockInWeeks.sub(unlockTime) >= WEEK){
             IStaker(staker).increaseTime(unlockAt);
             unlockTime = unlockInWeeks;
         }
@@ -167,7 +167,8 @@ contract CrvDepositor{
      */
     function depositFor(address to, uint256 _amount, bool _lock, address _stakeAddress) public {
         require(_amount > 0,"!>0");
-        
+        require(!cooldown, "cooldown");
+
         if(_lock){
             //lock immediately, transfer directly to staker to skip an erc20 transfer
             IERC20(crvBpt).safeTransferFrom(msg.sender, staker, _amount);
