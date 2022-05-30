@@ -235,6 +235,7 @@ contract Booster{
                 emit FeeInfoUpdated(_feeDistro, lockRewards, crv);
             } else {
                 //create a new reward contract for the new token
+                require(IRewards(lockRewards).extraRewardsLength() < 10, "too many rewards");
                 address rewards = IRewardFactory(rewardFactory).CreateTokenRewards(_feeToken, lockRewards, address(this));
                 feeTokens[_feeToken] = FeeDistro({
                     distro: _feeDistro,
