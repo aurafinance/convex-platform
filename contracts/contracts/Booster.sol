@@ -136,7 +136,7 @@ contract Booster{
      * @notice Fee Manager can update the fees (lockIncentive, stakeIncentive, earmarkIncentive, platformFee)
      */
     function setFeeManager(address _feeM) external {
-        require(msg.sender == feeManager, "!auth");
+        require(msg.sender == owner, "!auth");
         feeManager = _feeM;
 
         emit FeeManagerUpdated(_feeM);
@@ -189,7 +189,7 @@ contract Booster{
      * @notice Vote Delegate has the rights to cast votes on the VoterProxy via the Booster
      */
     function setVoteDelegate(address _voteDelegate) external {
-        require(msg.sender==voteDelegate, "!auth");
+        require(msg.sender==owner, "!auth");
         voteDelegate = _voteDelegate;
 
         emit VoteDelegateUpdated(_voteDelegate);
