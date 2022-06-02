@@ -3,19 +3,29 @@ pragma solidity 0.6.12;
 
 import "./Interfaces.sol";
 
-/*
-Immutable pool manager proxy to enforce that there are no multiple pools of the same gauge
-as well as new lp tokens are not gauge tokens
-*/
+/**
+ * @title   PoolManagerProxy
+ * @author  ConvexFinance
+ * @notice  Immutable pool manager proxy to enforce that there are no multiple pools of the same gauge
+ *          as well as new lp tokens are not gauge tokens
+ * @dev     Called by PoolManagerShutdownProxy 
+ */
 contract PoolManagerProxy{
 
-    address public constant pools = address(0xF403C135812408BFbE8713b5A23a04b3D48AAE31);
+    address public immutable pools;
     address public owner;
     address public operator;
 
-    constructor() public {
-        //default to multisig
-        owner = address(0xa3C5A1e09150B75ff251c1a7815A07182c3de2FB);
+    /**
+     * @param _pools      Contract can call addPool currently Booster
+     * @param _owner      Contract owner currently multisig
+     */
+    constructor(
+      address _pools, 
+      address _owner
+    ) public {
+        pools = _pools;
+        owner = _owner;
         operator = msg.sender;
     }
 
@@ -48,7 +58,11 @@ contract PoolManagerProxy{
         return IPools(pools).shutdownPool(_pid);
     }
 
-    //add a new pool - only OPERATOR
+    /**
+     * @notice  Add pool to system
+     * @dev     Only callable by the operator looks up the gauge from the gaugeMap in Booster to ensure
+     *          it hasn't already been added
+     */
     function addPool(address _lptoken, address _gauge, uint256 _stashVersion) external onlyOperator returns(bool){
 
         require(_gauge != address(0),"gauge is 0");

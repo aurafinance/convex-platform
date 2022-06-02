@@ -2,15 +2,24 @@
 
 pragma solidity 0.6.12;
 
-import '@openzeppelin/contracts/math/SafeMath.sol';
-import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
-import '@openzeppelin/contracts/token/ERC20/SafeERC20.sol';
-import '@openzeppelin/contracts/utils/Context.sol';
-import "@openzeppelin/contracts/access/Ownable.sol";
+import { ReentrancyGuard } from "@openzeppelin/contracts-0.6/utils/ReentrancyGuard.sol";
+import "@openzeppelin/contracts-0.6/math/SafeMath.sol";
+import "@openzeppelin/contracts-0.6/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts-0.6/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts-0.6/utils/Context.sol";
+import "@openzeppelin/contracts-0.6/access/Ownable.sol";
 import "./interfaces/IRewarder.sol";
 
-
-contract ConvexMasterChef is Ownable {
+/**
+ * @title   ConvexMasterChef
+ * @author  ConvexFinance
+ * @notice  Masterchef can distribute rewards to n pools over x time
+ * @dev     There are some caveats with this usage - once it's turned on it can't be turned off,
+ *          and thus it can over complicate the distribution of these rewards.
+ *          To kick things off, just transfer CVX here and add some pools - rewards will be distributed
+ *          pro-rata based on the allocation points in each pool vs the total alloc.
+ */
+contract ConvexMasterChef is Ownable, ReentrancyGuard {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
@@ -41,22 +50,22 @@ contract ConvexMasterChef is Ownable {
     }
 
     //cvx
-    IERC20 public cvx;
-    // Block number when bonus CVX period ends.
-    uint256 public bonusEndBlock;
+    IERC20 public immutable cvx;
     // CVX tokens created per block.
-    uint256 public rewardPerBlock;
+    uint256 public immutable rewardPerBlock;
     // Bonus muliplier for early cvx makers.
     uint256 public constant BONUS_MULTIPLIER = 2;
 
     // Info of each pool.
     PoolInfo[] public poolInfo;
+    mapping(address => bool) public isAddedPool;
     // Info of each user that stakes LP tokens.
     mapping(uint256 => mapping(address => UserInfo)) public userInfo;
     // Total allocation points. Must be the sum of all allocation points in all pools.
     uint256 public totalAllocPoint = 0;
     // The block number when CVX mining starts.
-    uint256 public startBlock;
+    uint256 public immutable startBlock;
+    uint256 public immutable endBlock;
 
     // Events
     event Deposit(address indexed user, uint256 indexed pid, uint256 amount);
@@ -72,12 +81,13 @@ contract ConvexMasterChef is Ownable {
         IERC20 _cvx,
         uint256 _rewardPerBlock,
         uint256 _startBlock,
-        uint256 _bonusEndBlock
+        uint256 _endBlock
     ) public {
         cvx = _cvx;
+        isAddedPool[address(_cvx)] = true;
         rewardPerBlock = _rewardPerBlock;
-        bonusEndBlock = _bonusEndBlock;
         startBlock = _startBlock;
+        endBlock = _endBlock;
     }
 
     function poolLength() external view returns (uint256) {
@@ -89,12 +99,15 @@ contract ConvexMasterChef is Ownable {
     function add(
         uint256 _allocPoint,
         IERC20 _lpToken,
-        IRewarder _rewarder,
-        bool _withUpdate
-    ) public onlyOwner {
-        if (_withUpdate) {
-            massUpdatePools();
-        }
+        IRewarder _rewarder
+    ) public onlyOwner nonReentrant {
+        require(poolInfo.length < 32, "max pools");
+
+        require(!isAddedPool[address(_lpToken)], "add: Duplicated LP Token");
+        isAddedPool[address(_lpToken)] = true;
+
+        massUpdatePools();
+
         uint256 lastRewardBlock = block.number > startBlock
             ? block.number
             : startBlock;
@@ -115,15 +128,15 @@ contract ConvexMasterChef is Ownable {
         uint256 _pid,
         uint256 _allocPoint,
         IRewarder _rewarder,
-        bool _withUpdate,
         bool _updateRewarder
-    ) public onlyOwner {
-        if (_withUpdate) {
-            massUpdatePools();
-        }
+    ) public onlyOwner nonReentrant {
+        massUpdatePools();
+
         totalAllocPoint = totalAllocPoint.sub(poolInfo[_pid].allocPoint).add(
             _allocPoint
         );
+        require(totalAllocPoint > 0, "!alloc");
+
         poolInfo[_pid].allocPoint = _allocPoint;
         if(_updateRewarder){
             poolInfo[_pid].rewarder = _rewarder;
@@ -136,16 +149,9 @@ contract ConvexMasterChef is Ownable {
         view
         returns (uint256)
     {
-        if (_to <= bonusEndBlock) {
-            return _to.sub(_from).mul(BONUS_MULTIPLIER);
-        } else if (_from >= bonusEndBlock) {
-            return _to.sub(_from);
-        } else {
-            return
-                bonusEndBlock.sub(_from).mul(BONUS_MULTIPLIER).add(
-                    _to.sub(bonusEndBlock)
-                );
-        }
+        uint256 clampedTo = _to > endBlock ? endBlock : _to;
+        uint256 clampedFrom = _from > endBlock ? endBlock : _from;
+        return clampedTo.sub(clampedFrom);
     }
 
     // View function to see pending CVXs on frontend.
@@ -206,7 +212,7 @@ contract ConvexMasterChef is Ownable {
     }
 
     // Deposit LP tokens to MasterChef for CVX allocation.
-    function deposit(uint256 _pid, uint256 _amount) public {
+    function deposit(uint256 _pid, uint256 _amount) public nonReentrant {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
         updatePool(_pid);
@@ -236,7 +242,7 @@ contract ConvexMasterChef is Ownable {
     }
 
     // Withdraw LP tokens from MasterChef.
-    function withdraw(uint256 _pid, uint256 _amount) public {
+    function withdraw(uint256 _pid, uint256 _amount) public nonReentrant {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
         require(user.amount >= _amount, "withdraw: not good");
@@ -259,7 +265,7 @@ contract ConvexMasterChef is Ownable {
         emit Withdraw(msg.sender, _pid, _amount);
     }
 
-    function claim(uint256 _pid, address _account) external{
+    function claim(uint256 _pid, address _account) external nonReentrant {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][_account];
 
@@ -280,7 +286,7 @@ contract ConvexMasterChef is Ownable {
     }
 
     // Withdraw without caring about rewards. EMERGENCY ONLY.
-    function emergencyWithdraw(uint256 _pid) public {
+    function emergencyWithdraw(uint256 _pid) public nonReentrant {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
         pool.lpToken.safeTransfer(address(msg.sender), user.amount);

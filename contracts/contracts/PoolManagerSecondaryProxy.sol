@@ -3,28 +3,44 @@ pragma solidity 0.6.12;
 
 import "./Interfaces.sol";
 import "./interfaces/IGaugeController.sol";
-import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
-import '@openzeppelin/contracts/math/SafeMath.sol';
+import "@openzeppelin/contracts-0.6/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts-0.6/math/SafeMath.sol";
 
-/*
-Immutable pool manager proxy to enforce that when a pool is shutdown, the proper number
-of lp tokens are returned to the booster contract for withdrawal
-*/
+/**
+ * @title   PoolManagerSecondaryProxy
+ * @author  ConvexFinance
+ * @notice  Basically a PoolManager that has a better shutdown and calls addPool on PoolManagerProxy. 
+ *          Immutable pool manager proxy to enforce that when a  pool is shutdown, the proper number
+ *          of lp tokens are returned to the booster contract for withdrawal.
+ */
 contract PoolManagerSecondaryProxy{
     using SafeMath for uint256;
 
-    address public constant gaugeController = address(0x2F50D538606Fa9EDD2B11E2446BEb18C9D5846bB);
-    address public constant pools = address(0x5F47010F230cE1568BeA53a06eBAF528D05c5c1B);
-    address public constant booster = address(0xF403C135812408BFbE8713b5A23a04b3D48AAE31);
+    address public immutable gaugeController;
+    address public immutable pools;
+    address public immutable booster;
     address public owner;
     address public operator;
     bool public isShutdown;
 
     mapping(address => bool) public usedMap;
 
-    constructor() public {
-        //default to multisig
-        owner = address(0xa3C5A1e09150B75ff251c1a7815A07182c3de2FB);
+    /**
+     * @param _gaugeController Curve Gauge controller (0x2F50D538606Fa9EDD2B11E2446BEb18C9D5846bB)
+     * @param _pools PoolManagerProxy (0x5F47010F230cE1568BeA53a06eBAF528D05c5c1B)
+     * @param _booster Booster
+     * @param _owner Executoor
+     */
+    constructor(
+        address _gaugeController,
+        address _pools,
+        address _booster,
+        address _owner
+    ) public {
+        gaugeController = _gaugeController;
+        pools = _pools;
+        booster = _booster;
+        owner = _owner; 
         operator = msg.sender;
     }
 
@@ -60,7 +76,11 @@ contract PoolManagerSecondaryProxy{
         isShutdown = true;
     }
 
-    //shutdown a pool - only OPERATOR
+    /**
+     * @notice  Shutdown a pool - only OPERATOR
+     * @dev     Shutdowns a pool and ensures all the LP tokens are properly
+     *          withdrawn to the Booster contract 
+     */
     function shutdownPool(uint256 _pid) external onlyOperator returns(bool){
         //get pool info
         (address lptoken, address depositToken,,,,bool isshutdown) = IPools(booster).poolInfo(_pid);
