@@ -14,15 +14,12 @@ import "@openzeppelin/contracts-0.6/token/ERC20/SafeERC20.sol";
  * @dev     They say all paths lead to Rome, and the cvxBooster is no different. This is where it all goes down.
  *          It is responsible for tracking all the pools, it collects rewards from all pools and redirects it.
  */
-// TODO:
 contract BoosterLite{
     using SafeERC20 for IERC20;
     using Address for address;
     using SafeMath for uint256;
 
     address public immutable crv;
-    address public immutable voteOwnership;
-    address public immutable voteParameter;
 
     uint256 public lockIncentive = 825; //incentive to crv stakers
     uint256 public stakerIncentive = 825; //incentive to native token stakers
@@ -39,8 +36,6 @@ contract BoosterLite{
     address public rewardFactory;
     address public stashFactory;
     address public tokenFactory;
-    address public rewardArbitrator;
-    address public voteDelegate;
     address public treasury;
     address public stakerRewards; //cvx rewards
     address public lockRewards; //cvxCrv rewards(crv)
@@ -77,8 +72,6 @@ contract BoosterLite{
     event FeeManagerUpdated(address newFeeManager);
     event PoolManagerUpdated(address newPoolManager);
     event FactoriesUpdated(address rewardFactory, address stashFactory, address tokenFactory);
-    event ArbitratorUpdated(address newArbitrator);
-    event VoteDelegateUpdated(address newVoteDelegate);
     event RewardContractsUpdated(address lockRewards, address stakerRewards);
     event FeesUpdated(uint256 lockIncentive, uint256 stakerIncentive, uint256 earmarkIncentive, uint256 platformFee);
     event TreasuryUpdated(address newTreasury);
@@ -91,31 +84,23 @@ contract BoosterLite{
      * @param _staker                 VoterProxy (locks the crv and adds to all gauges)
      * @param _minter                 CVX token, or the thing that mints it
      * @param _crv                    CRV
-     * @param _voteOwnership          Address of the Curve DAO responsible for ownership stuff
-     * @param _voteParameter          Address of the Curve DAO responsible for param updates
      */
     constructor(
         address _staker,
         address _minter,
-        address _crv,
-        address _voteOwnership,
-        address _voteParameter
+        address _crv
     ) public {
         staker = _staker;
         minter = _minter;
         crv = _crv;
-        voteOwnership = _voteOwnership;
-        voteParameter = _voteParameter;
         isShutdown = false;
 
         owner = msg.sender;
-        voteDelegate = msg.sender;
         feeManager = msg.sender;
         poolManager = msg.sender;
         treasury = address(0);
 
         emit OwnerUpdated(msg.sender);
-        emit VoteDelegateUpdated(msg.sender);
         emit FeeManagerUpdated(msg.sender);
         emit PoolManagerUpdated(msg.sender);
     }
@@ -174,26 +159,6 @@ contract BoosterLite{
         } else {
             emit FactoriesUpdated(address(0), _sfactory, address(0));
         }
-    }
-
-    /**
-     * @notice Arbitrator handles tokens that are used as secondary rewards across multiple pools
-     */
-    function setArbitrator(address _arb) external {
-        require(msg.sender==owner, "!auth");
-        rewardArbitrator = _arb;
-
-        emit ArbitratorUpdated(_arb);
-    }
-
-    /**
-     * @notice Vote Delegate has the rights to cast votes on the VoterProxy via the Booster
-     */
-    function setVoteDelegate(address _voteDelegate) external {
-        require(msg.sender==owner, "!auth");
-        voteDelegate = _voteDelegate;
-
-        emit VoteDelegateUpdated(_voteDelegate);
     }
 
     /**
@@ -511,39 +476,6 @@ contract BoosterLite{
     }
 
     /**
-     * @notice set valid vote hash on VoterProxy 
-     */
-    function setVote(bytes32 _hash, bool valid) external returns(bool){
-        require(msg.sender == voteDelegate, "!auth");
-        
-        IStaker(staker).setVote(_hash, valid);
-        return true;
-    }
-
-    /**
-     * @notice Delegate address votes on dao via VoterProxy
-     */
-    function vote(uint256 _voteId, address _votingAddress, bool _support) external returns(bool){
-        require(msg.sender == voteDelegate, "!auth");
-        require(_votingAddress == voteOwnership || _votingAddress == voteParameter, "!voteAddr");
-        
-        IStaker(staker).vote(_voteId,_votingAddress,_support);
-        return true;
-    }
-
-    /**
-     * @notice Delegate address votes on gauge weight via VoterProxy
-     */
-    function voteGaugeWeight(address[] calldata _gauge, uint256[] calldata _weight ) external returns(bool){
-        require(msg.sender == voteDelegate, "!auth");
-
-        for(uint256 i = 0; i < _gauge.length; i++){
-            IStaker(staker).voteGaugeWeight(_gauge[i],_weight[i]);
-        }
-        return true;
-    }
-
-    /**
      * @notice Allows a stash to claim secondary rewards from a gauge
      */
     function claimRewards(uint256 _pid, address _gauge) external returns(bool){
@@ -599,17 +531,12 @@ contract BoosterLite{
             uint256 _stakerIncentive = crvBal.mul(stakerIncentive).div(FEE_DENOMINATOR);
             // CallIncentive = caller of this contract (currently 1%)
             uint256 _callIncentive = crvBal.mul(earmarkIncentive).div(FEE_DENOMINATOR);
-            
-            // Treasury = vlCVX (currently 1%)
-            if(treasury != address(0) && treasury != address(this) && platformFee > 0){
-                //only subtract after address condition check
-                uint256 _platform = crvBal.mul(platformFee).div(FEE_DENOMINATOR);
-                crvBal = crvBal.sub(_platform);
-                IERC20(crv).safeTransfer(treasury, _platform);
-            }
+            // Platform = platform fee (currently 0%)
+            uint256 _platform = crvBal.mul(platformFee).div(FEE_DENOMINATOR);
 
             //remove incentives from balance
-            crvBal = crvBal.sub(_lockIncentive).sub(_callIncentive).sub(_stakerIncentive);
+            uint256 _totalIncentive = _lockIncentive.add(_stakerIncentive).add(_platform);
+            crvBal = crvBal.sub(_totalIncentive).sub(_callIncentive);
 
             //send incentives for calling
             IERC20(crv).safeTransfer(msg.sender, _callIncentive);          
@@ -620,12 +547,7 @@ contract BoosterLite{
             IRewards(rewardContract).queueNewRewards(crvBal);
 
             //send lockers' share of crv to reward contract
-            IERC20(crv).safeTransfer(lockRewards, _lockIncentive);
-            // TODO:
-            // IRewards(lockRewards).queueNewRewards(_lockIncentive);
-
-            //send stakers's share of crv to reward contract
-            IERC20(crv).safeTransfer(stakerRewards, _stakerIncentive);
+            IERC20(crv).safeTransfer(lockRewards, _totalIncentive);
         }
     }
 
