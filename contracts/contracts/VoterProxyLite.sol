@@ -22,7 +22,6 @@ contract VoterProxyLite {
     address public immutable crvBpt;
 
     address public immutable escrow;
-    address public gaugeController;
     address public rewardDeposit;
     address public withdrawer;
 
@@ -38,21 +37,18 @@ contract VoterProxyLite {
      * @param _crv              CRV Token address
      * @param _crvBpt           CRV:ETH 80-20 BPT Token address
      * @param _escrow           Curve Voting escrow contract
-     * @param _gaugeController  Curve Gauge Controller
      *                          Controls liquidity gauges and the issuance of coins through the gauges
      */
     constructor(
         address _mintr,
         address _crv,
         address _crvBpt,
-        address _escrow,
-        address _gaugeController
+        address _escrow
     ) public {
         mintr = _mintr; 
         crv = _crv;
         crvBpt = _crvBpt;
         escrow = _escrow;
-        gaugeController = _gaugeController;
         owner = msg.sender;
 
         protectedTokens[_crv] = true;
@@ -81,12 +77,10 @@ contract VoterProxyLite {
 
     /**
      * @notice Allows dao to set the external system config, should it change in the future
-     * @param _gaugeController External gauge controller address
      * @param _mintr Token minter address for claiming rewards
      */
-    function setSystemConfig(address _gaugeController, address _mintr) external returns (bool) {
+    function setSystemConfig(address _mintr) external returns (bool) {
         require(msg.sender == owner, "!auth");
-        gaugeController = _gaugeController;
         mintr = _mintr;
         return true;
     }
