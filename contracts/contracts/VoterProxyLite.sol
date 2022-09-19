@@ -8,13 +8,11 @@ import "@openzeppelin/contracts-0.6/utils/Address.sol";
 import "@openzeppelin/contracts-0.6/token/ERC20/SafeERC20.sol";
 
 /**
- * @title   VoterProxy
+ * @title   VoterProxyLite
  * @author  ConvexFinance
- * @notice  VoterProxy whitelisted in the curve SmartWalletWhitelist that
- *          participates in Curve governance. Also handles all deposits since this is 
- *          the address that has the voting power.
+ * @notice  L2 VoterProxy 
  */
-contract VoterProxy {
+contract VoterProxyLite {
     using SafeERC20 for IERC20;
     using Address for address;
     using SafeMath for uint256;
@@ -34,11 +32,6 @@ contract VoterProxy {
     
     mapping (address => bool) private stashPool;
     mapping (address => bool) private protectedTokens;
-    mapping (bytes32 => bool) private votes;
-
-    bytes4 constant internal EIP1271_MAGIC_VALUE = 0x1626ba7e;
-
-    event VoteSet(bytes32 hash, bool valid);
 
     /**
      * @param _mintr            CRV minter
@@ -128,35 +121,6 @@ contract VoterProxy {
     }
 
     /**
-     * @notice Save a vote hash so when snapshot.org asks this contract if 
-     *          a vote signature is valid we are able to check for a valid hash
-     *          and return the appropriate response inline with EIP 1721
-     * @param _hash  Hash of vote signature that was sent to snapshot.org
-     * @param _valid Is the hash valid
-     */
-    function setVote(bytes32 _hash, bool _valid) external {
-        require(msg.sender == operator, "!auth");
-        votes[_hash] = _valid;
-        emit VoteSet(_hash, _valid);
-    }
-
-    /**
-     * @notice  Verifies that the hash is valid
-     * @dev     Snapshot Hub will call this function when a vote is submitted using
-     *          snapshot.js on behalf of this contract. Snapshot Hub will call this
-     *          function with the hash and the signature of the vote that was cast.
-     * @param _hash Hash of the message that was sent to Snapshot Hub to cast a vote
-     * @return EIP1271 magic value if the signature is value 
-     */
-    function isValidSignature(bytes32 _hash, bytes memory) public view returns (bytes4) {
-        if(votes[_hash]) {
-            return EIP1271_MAGIC_VALUE;
-        } else {
-            return 0xffffffff;
-        }  
-    }
-
-    /**
      * @notice  Deposit tokens into the Curve Gauge
      * @dev     Only can be called by the operator (Booster) once this contract has been
      *          whitelisted by the Curve DAO
@@ -232,72 +196,6 @@ contract VoterProxy {
         return _amount;
     }
     
-    
-    /**
-     * @notice  Lock CRV in Curve's voting escrow contract
-     * @dev     Called by the CrvDepositor contract
-     * @param _value      Amount of crv to lock
-     * @param _unlockTime Timestamp to unlock (max is 4 years)
-     */
-    function createLock(uint256 _value, uint256 _unlockTime) external returns(bool){
-        require(msg.sender == depositor, "!auth");
-        IERC20(crvBpt).safeApprove(escrow, 0);
-        IERC20(crvBpt).safeApprove(escrow, _value);
-        ICurveVoteEscrow(escrow).create_lock(_value, _unlockTime);
-        return true;
-    }
-  
-    /**
-     * @notice Called by the CrvDepositor to increase amount of locked curve
-     */
-    function increaseAmount(uint256 _value) external returns(bool){
-        require(msg.sender == depositor, "!auth");
-        IERC20(crvBpt).safeApprove(escrow, 0);
-        IERC20(crvBpt).safeApprove(escrow, _value);
-        ICurveVoteEscrow(escrow).increase_amount(_value);
-        return true;
-    }
-
-    /**
-     * @notice Called by the CrvDepositor to increase unlocked time of curve
-     * @param _value Timestamp to increase locking to
-     */
-    function increaseTime(uint256 _value) external returns(bool){
-        require(msg.sender == depositor, "!auth");
-        ICurveVoteEscrow(escrow).increase_unlock_time(_value);
-        return true;
-    }
-
-    /**
-     * @notice  Withdraw all CRV from Curve's voting escrow contract
-     * @dev     Only callable by CrvDepositor and can only withdraw if lock has expired
-     */
-    function release() external returns(bool){
-        require(msg.sender == depositor, "!auth");
-        ICurveVoteEscrow(escrow).withdraw();
-        return true;
-    }
-
-    /**
-     * @notice Vote on CRV DAO for proposal
-     */
-    function vote(uint256 _voteId, address _votingAddress, bool _support) external returns(bool){
-        require(msg.sender == operator, "!auth");
-        IVoting(_votingAddress).vote(_voteId,_support,false);
-        return true;
-    }
-
-    /**
-     * @notice Vote for a single gauge weight via the controller
-     */
-    function voteGaugeWeight(address _gauge, uint256 _weight) external returns(bool){
-        require(msg.sender == operator, "!auth");
-
-        //vote
-        IVoting(gaugeController).vote_for_gauge_weights(_gauge, _weight);
-        return true;
-    }
-
     /**
      * @notice  Claim CRV from Curve
      * @dev     Claim CRV for LP token staking from the CRV minter contract
