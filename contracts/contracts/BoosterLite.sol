@@ -548,6 +548,7 @@ contract BoosterLite{
 
             //send lockers' share of crv to reward contract
             IERC20(crv).safeTransfer(lockRewards, _totalIncentive);
+            IRewards(lockRewards).queueNewRewards(_totalIncentive);
         }
     }
 
