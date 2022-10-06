@@ -36,7 +36,6 @@ contract BoosterLite{
     address public rewardFactory;
     address public stashFactory;
     address public tokenFactory;
-    address public treasury;
     address public stakerRewards; //cvx rewards
     address public lockRewards; //cvxCrv rewards(crv)
 
@@ -98,7 +97,6 @@ contract BoosterLite{
         owner = msg.sender;
         feeManager = msg.sender;
         poolManager = msg.sender;
-        treasury = address(0);
 
         emit OwnerUpdated(msg.sender);
         emit FeeManagerUpdated(msg.sender);
@@ -253,16 +251,6 @@ contract BoosterLite{
         platformFee = _platform;
 
         emit FeesUpdated(_lockFees, _stakerFees, _callerFees, _platform);
-    }
-
-    /**
-     * @notice Set the address of the treasury (i.e. vlCVX)
-     */
-    function setTreasury(address _treasury) external {
-        require(msg.sender==feeManager, "!auth");
-        treasury = _treasury;
-
-        emit TreasuryUpdated(_treasury);
     }
 
     /// END SETTER SECTION ///
@@ -535,11 +523,8 @@ contract BoosterLite{
             uint256 _platform = crvBal.mul(platformFee).div(FEE_DENOMINATOR);
 
             //remove incentives from balance
-            uint256 _totalIncentive = _lockIncentive.add(_stakerIncentive).add(_platform);
-            crvBal = crvBal.sub(_totalIncentive).sub(_callIncentive);
-
-            //send incentives for calling
-            IERC20(crv).safeTransfer(msg.sender, _callIncentive);          
+            uint256 _totalIncentive = _lockIncentive.add(_stakerIncentive).add(_platform).add(_callIncentive);
+            crvBal = crvBal.sub(_totalIncentive);
 
             //send crv to lp provider reward contract
             address rewardContract = pool.crvRewards;
