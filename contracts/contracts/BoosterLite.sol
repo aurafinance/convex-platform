@@ -36,15 +36,7 @@ contract BoosterLite{
     address public rewardFactory;
     address public stashFactory;
     address public tokenFactory;
-    address public stakerRewards; //cvx rewards
     address public lockRewards; //cvxCrv rewards(crv)
-
-    mapping(address => FeeDistro) public feeTokens;
-    struct FeeDistro {
-        address distro;
-        address rewards;
-        bool active;
-    }
 
     bool public isShutdown;
 
@@ -71,11 +63,8 @@ contract BoosterLite{
     event FeeManagerUpdated(address newFeeManager);
     event PoolManagerUpdated(address newPoolManager);
     event FactoriesUpdated(address rewardFactory, address stashFactory, address tokenFactory);
-    event RewardContractsUpdated(address lockRewards, address stakerRewards);
+    event RewardContractsUpdated(address lockRewards);
     event FeesUpdated(uint256 lockIncentive, uint256 stakerIncentive, uint256 earmarkIncentive, uint256 platformFee);
-    event TreasuryUpdated(address newTreasury);
-    event FeeInfoUpdated(address feeDistro, address lockFees, address feeToken);
-    event FeeInfoChanged(address feeDistro, bool active);
 
     /**
      * @dev Constructor doing what constructors do. It is noteworthy that
@@ -160,71 +149,17 @@ contract BoosterLite{
     }
 
     /**
-     * @notice Only called once, to set the addresses of cvxCrv (lockRewards) and cvx staking (stakerRewards)
+     * @notice Only called once, to set the addresses of cvxCrv (lockRewards)
      */
-    function setRewardContracts(address _rewards, address _stakerRewards) external {
+    function setRewardContracts(address _rewards) external {
         require(msg.sender == owner, "!auth");
         
         //reward contracts are immutable or else the owner
         //has a means to redeploy and mint cvx via rewardClaimed()
         if(lockRewards == address(0)){
             lockRewards = _rewards;
-            stakerRewards = _stakerRewards;
-            emit RewardContractsUpdated(_rewards, _stakerRewards);
+            emit RewardContractsUpdated(_rewards);
         }
-    }
-
-    /**
-     * @notice Set reward token and claim contract
-     * @dev    This creates a secondary (VirtualRewardsPool) rewards contract for the vcxCrv staking contract
-     */
-    function setFeeInfo(address _feeToken, address _feeDistro) external {
-        require(msg.sender == owner, "!auth");
-        require(!isShutdown, "shutdown");
-        require(lockRewards != address(0) && rewardFactory != address(0), "!initialised");
-
-        require(_feeToken != address(0) && _feeDistro != address(0), "!addresses");
-        require(IFeeDistributor(_feeDistro).getTokenTimeCursor(_feeToken) > 0, "!distro");
-
-        if(feeTokens[_feeToken].distro == address(0)){
-            require(!gaugeMap[_feeToken], "!token");
-
-            // Distributed directly
-            if(_feeToken == crv){
-                feeTokens[crv] = FeeDistro({
-                    distro: _feeDistro,
-                    rewards: lockRewards,
-                    active: true
-                });
-                emit FeeInfoUpdated(_feeDistro, lockRewards, crv);
-            } else {
-                //create a new reward contract for the new token
-                require(IRewards(lockRewards).extraRewardsLength() < 10, "too many rewards");
-                address rewards = IRewardFactory(rewardFactory).CreateTokenRewards(_feeToken, lockRewards, address(this));
-                feeTokens[_feeToken] = FeeDistro({
-                    distro: _feeDistro,
-                    rewards: rewards,
-                    active: true
-                });
-                emit FeeInfoUpdated(_feeDistro, rewards, _feeToken);
-            }
-        } else {
-            feeTokens[_feeToken].distro = _feeDistro;
-            emit FeeInfoUpdated(_feeDistro, address(0), _feeToken);
-        }
-    }
-
-    /**
-     * @notice Allows turning off or on for fee distro
-     */
-    function updateFeeInfo(address _feeToken, bool _active) external {
-        require(msg.sender==owner, "!auth");
-
-        require(feeTokens[_feeToken].distro != address(0), "Fee doesn't exist");
-
-        feeTokens[_feeToken].active = _active;
-
-        emit FeeInfoChanged(_feeToken, _active);
     }
 
     /**
@@ -267,7 +202,6 @@ contract BoosterLite{
     function addPool(address _lptoken, address _gauge, uint256 _stashVersion) external returns(bool){
         require(msg.sender==poolManager && !isShutdown, "!add");
         require(_gauge != address(0) && _lptoken != address(0),"!param");
-        require(feeTokens[_gauge].distro == address(0), "!gauge");
 
         //the next pool's pid
         uint256 pid = poolInfo.length;
@@ -545,30 +479,6 @@ contract BoosterLite{
     function earmarkRewards(uint256 _pid) external returns(bool){
         require(!isShutdown,"shutdown");
         _earmarkRewards(_pid);
-        return true;
-    }
-
-    /**
-     * @notice Claim fees from curve distro contract, put in lockers' reward contract.
-     *         lockFees is the secondary reward contract that uses the virtual balances from cvxCrv
-     */
-    function earmarkFees(address _feeToken) external returns(bool){
-        require(!isShutdown,"shutdown");
-        FeeDistro memory feeDistro = feeTokens[_feeToken];
-        
-        require(feeDistro.active, "Inactive distro");
-        require(!gaugeMap[_feeToken], "Invalid token");
-
-        //claim fee rewards
-        uint256 tokenBalanceBefore = IERC20(_feeToken).balanceOf(address(this));
-        IStaker(staker).claimFees(feeDistro.distro, _feeToken);
-        uint256 tokenBalanceAfter = IERC20(_feeToken).balanceOf(address(this));
-        uint256 feesClaimed = tokenBalanceAfter.sub(tokenBalanceBefore);
-
-        //send fee rewards to reward contract
-        IERC20(_feeToken).safeTransfer(feeDistro.rewards, feesClaimed);
-        IRewards(feeDistro.rewards).queueNewRewards(feesClaimed);
-
         return true;
     }
 

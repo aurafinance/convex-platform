@@ -216,20 +216,6 @@ contract VoterProxyLite {
         return true;
     }
 
-    /**
-     * @notice  Claim fees (3crv) from staking lp tokens
-     * @dev     Only callable by the operator Booster
-     * @param _distroContract   Fee distribution contract
-     * @param _token            LP token to claim fees for
-     */
-    function claimFees(address _distroContract, address _token) external returns (uint256){
-        require(msg.sender == operator, "!auth");
-        IFeeDistributor(_distroContract).claimToken(address(this), _token);
-        uint256 _balance = IERC20(_token).balanceOf(address(this));
-        IERC20(_token).safeTransfer(operator, _balance);
-        return _balance;
-    }    
-
     function balanceOfPool(address _gauge) public view returns (uint256) {
         return ICurveGauge(_gauge).balanceOf(address(this));
     }
