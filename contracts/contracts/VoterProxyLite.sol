@@ -21,7 +21,6 @@ contract VoterProxyLite {
     address public immutable crv;
     address public immutable crvBpt;
 
-    address public immutable escrow;
     address public rewardDeposit;
     address public withdrawer;
 
@@ -36,19 +35,16 @@ contract VoterProxyLite {
      * @param _mintr            CRV minter
      * @param _crv              CRV Token address
      * @param _crvBpt           CRV:ETH 80-20 BPT Token address
-     * @param _escrow           Curve Voting escrow contract
      *                          Controls liquidity gauges and the issuance of coins through the gauges
      */
     constructor(
         address _mintr,
         address _crv,
-        address _crvBpt,
-        address _escrow
+        address _crvBpt
     ) public {
         mintr = _mintr; 
         crv = _crv;
         crvBpt = _crvBpt;
-        escrow = _escrow;
         owner = msg.sender;
 
         protectedTokens[_crv] = true;
