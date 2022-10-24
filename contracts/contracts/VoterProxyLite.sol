@@ -10,7 +10,7 @@ import "@openzeppelin/contracts-0.6/token/ERC20/SafeERC20.sol";
 /**
  * @title   VoterProxyLite
  * @author  ConvexFinance
- * @notice  L2 VoterProxy 
+ * @notice  L2 VoterProxy
  */
 contract VoterProxyLite {
     using SafeERC20 for IERC20;
@@ -19,7 +19,6 @@ contract VoterProxyLite {
 
     address public mintr;
     address public immutable crv;
-    address public immutable crvBpt;
 
     address public rewardDeposit;
     address public withdrawer;
@@ -27,28 +26,23 @@ contract VoterProxyLite {
     address public owner;
     address public operator;
     address public depositor;
-    
-    mapping (address => bool) private stashPool;
-    mapping (address => bool) private protectedTokens;
+
+    mapping(address => bool) private stashPool;
+    mapping(address => bool) private protectedTokens;
 
     /**
      * @param _mintr            CRV minter
      * @param _crv              CRV Token address
-     * @param _crvBpt           CRV:ETH 80-20 BPT Token address
-     *                          Controls liquidity gauges and the issuance of coins through the gauges
      */
     constructor(
         address _mintr,
-        address _crv,
-        address _crvBpt
+        address _crv
     ) public {
-        mintr = _mintr; 
+        mintr = _mintr;
         crv = _crv;
-        crvBpt = _crvBpt;
         owner = msg.sender;
 
         protectedTokens[_crv] = true;
-        protectedTokens[_crvBpt] = true;
     }
 
     function getName() external pure returns (string memory) {
@@ -88,7 +82,7 @@ contract VoterProxyLite {
     function setOperator(address _operator) external {
         require(msg.sender == owner, "!auth");
         require(operator == address(0) || IDeposit(operator).isShutdown() == true, "needs shutdown");
-        
+
         operator = _operator;
     }
 
@@ -102,9 +96,9 @@ contract VoterProxyLite {
         depositor = _depositor;
     }
 
-    function setStashAccess(address _stash, bool _status) external returns(bool){
+    function setStashAccess(address _stash, bool _status) external returns (bool) {
         require(msg.sender == operator, "!auth");
-        if(_stash != address(0)){
+        if (_stash != address(0)) {
             stashPool[_stash] = _status;
         }
         return true;
@@ -115,14 +109,14 @@ contract VoterProxyLite {
      * @dev     Only can be called by the operator (Booster) once this contract has been
      *          whitelisted by the Curve DAO
      * @param _token  Deposit LP token address
-     * @param _gauge  Gauge contract to deposit to 
-     */ 
-    function deposit(address _token, address _gauge) external returns(bool){
+     * @param _gauge  Gauge contract to deposit to
+     */
+    function deposit(address _token, address _gauge) external returns (bool) {
         require(msg.sender == operator, "!auth");
-        if(protectedTokens[_token] == false){
+        if (protectedTokens[_token] == false) {
             protectedTokens[_token] = true;
         }
-        if(protectedTokens[_gauge] == false){
+        if (protectedTokens[_gauge] == false) {
             protectedTokens[_gauge] = true;
         }
         uint256 balance = IERC20(_token).balanceOf(address(this));
@@ -151,13 +145,17 @@ contract VoterProxyLite {
     }
 
     /**
-     * @notice  Withdraw LP tokens from a gauge 
-     * @dev     Only callable by the operator 
+     * @notice  Withdraw LP tokens from a gauge
+     * @dev     Only callable by the operator
      * @param _token    LP token address
      * @param _gauge    Gauge for this LP token
      * @param _amount   Amount of LP token to withdraw
      */
-    function withdraw(address _token, address _gauge, uint256 _amount) public returns(bool){
+    function withdraw(
+        address _token,
+        address _gauge,
+        uint256 _amount
+    ) public returns (bool) {
         require(msg.sender == operator, "!auth");
         uint256 _balance = IERC20(_token).balanceOf(address(this));
         if (_balance < _amount) {
@@ -169,12 +167,12 @@ contract VoterProxyLite {
     }
 
     /**
-     * @notice  Withdraw all LP tokens from a gauge 
-     * @dev     Only callable by the operator 
+     * @notice  Withdraw all LP tokens from a gauge
+     * @dev     Only callable by the operator
      * @param _token  LP token address
      * @param _gauge  Gauge for this LP token
      */
-    function withdrawAll(address _token, address _gauge) external returns(bool){
+    function withdrawAll(address _token, address _gauge) external returns (bool) {
         require(msg.sender == operator, "!auth");
         uint256 amount = balanceOfPool(_gauge).add(IERC20(_token).balanceOf(address(this)));
         withdraw(_token, _gauge, amount);
@@ -185,28 +183,28 @@ contract VoterProxyLite {
         ICurveGauge(_gauge).withdraw(_amount);
         return _amount;
     }
-    
+
     /**
      * @notice  Claim CRV from Curve
      * @dev     Claim CRV for LP token staking from the CRV minter contract
      */
-    function claimCrv(address _gauge) external returns (uint256){
+    function claimCrv(address _gauge) external returns (uint256) {
         require(msg.sender == operator, "!auth");
-        
+
         uint256 _balance = 0;
-        try IMinter(mintr).mint(_gauge){
+        try IMinter(mintr).mint(_gauge) {
             _balance = IERC20(crv).balanceOf(address(this));
             IERC20(crv).safeTransfer(operator, _balance);
-        }catch{}
+        } catch {}
 
         return _balance;
     }
 
     /**
      * @notice  Claim extra rewards from gauge
-     * @dev     Called by operator (Booster) to claim extra rewards 
+     * @dev     Called by operator (Booster) to claim extra rewards
      */
-    function claimRewards(address _gauge) external returns(bool){
+    function claimRewards(address _gauge) external returns (bool) {
         require(msg.sender == operator, "!auth");
         ICurveGauge(_gauge).claim_rewards();
         return true;
@@ -221,12 +219,11 @@ contract VoterProxyLite {
         uint256 _value,
         bytes calldata _data
     ) external returns (bool, bytes memory) {
-        require(msg.sender == operator,"!auth");
+        require(msg.sender == operator, "!auth");
 
-        (bool success, bytes memory result) = _to.call{value:_value}(_data);
+        (bool success, bytes memory result) = _to.call{ value: _value }(_data);
         require(success, "!success");
 
         return (success, result);
     }
-
 }
