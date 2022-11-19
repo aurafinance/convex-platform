@@ -6,6 +6,7 @@ import "@openzeppelin/contracts-0.6/math/SafeMath.sol";
 import "@openzeppelin/contracts-0.6/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts-0.6/utils/Address.sol";
 import "@openzeppelin/contracts-0.6/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts-0.6/utils/ReentrancyGuard.sol";
 
 /**
  * @title   Booster
@@ -14,7 +15,7 @@ import "@openzeppelin/contracts-0.6/token/ERC20/SafeERC20.sol";
  * @dev     They say all paths lead to Rome, and the cvxBooster is no different. This is where it all goes down.
  *          It is responsible for tracking all the pools, it collects rewards from all pools and redirects it.
  */
-contract Booster{
+contract Booster is ReentrancyGuard {
     using SafeERC20 for IERC20;
     using Address for address;
     using SafeMath for uint256;
@@ -27,7 +28,7 @@ contract Booster{
     uint256 public stakerIncentive = 825; //incentive to native token stakers
     uint256 public earmarkIncentive = 50; //incentive to users who spend gas to make calls
     uint256 public platformFee = 0; //possible fee to build treasury
-    uint256 public constant MaxFees = 2500;
+    uint256 public constant MaxFees = 4000;
     uint256 public constant FEE_DENOMINATOR = 10000;
 
     address public owner;
@@ -43,6 +44,9 @@ contract Booster{
     address public treasury;
     address public stakerRewards; //cvx rewards
     address public lockRewards; //cvxCrv rewards(crv)
+    address public bridgeDelegate;
+    mapping(uint256 => uint256) public l2FeesHistory;
+    uint256 immutable epochLength = 1 weeks;
 
     mapping(address => FeeDistro) public feeTokens;
     struct FeeDistro {
@@ -65,6 +69,11 @@ contract Booster{
     //index(pid) -> pool
     PoolInfo[] public poolInfo;
     mapping(address => bool) public gaugeMap;
+
+    // Reward multiplier for increasing or decreasing AURA rewards per PID
+    uint256 public constant REWARD_MULTIPLIER_DENOMINATOR = 10000;
+    // rewardContract => rewardMultiplier (10000 = 100%)
+    mapping(address => uint256) public getRewardMultipliers;
 
     event Deposited(address indexed user, uint256 indexed poolid, uint256 amount);
     event Withdrawn(address indexed user, uint256 indexed poolid, uint256 amount);
@@ -206,6 +215,7 @@ contract Booster{
         if(lockRewards == address(0)){
             lockRewards = _rewards;
             stakerRewards = _stakerRewards;
+            getRewardMultipliers[lockRewards] = REWARD_MULTIPLIER_DENOMINATOR;
             emit RewardContractsUpdated(_rewards, _stakerRewards);
         }
     }
@@ -214,7 +224,7 @@ contract Booster{
      * @notice Set reward token and claim contract
      * @dev    This creates a secondary (VirtualRewardsPool) rewards contract for the vcxCrv staking contract
      */
-    function setFeeInfo(address _feeToken, address _feeDistro) external {
+    function setFeeInfo(address _feeToken, address _feeDistro) external nonReentrant {
         require(msg.sender == owner, "!auth");
         require(!isShutdown, "shutdown");
         require(lockRewards != address(0) && rewardFactory != address(0), "!initialised");
@@ -270,13 +280,13 @@ contract Booster{
      * @param _callerFees   % for whoever calls the claim where 1% == 100
      * @param _platform     % for "treasury" or vlCVX where 1% == 100
      */
-    function setFees(uint256 _lockFees, uint256 _stakerFees, uint256 _callerFees, uint256 _platform) external{
+    function setFees(uint256 _lockFees, uint256 _stakerFees, uint256 _callerFees, uint256 _platform) external nonReentrant{
         require(msg.sender==feeManager, "!auth");
 
         uint256 total = _lockFees.add(_stakerFees).add(_callerFees).add(_platform);
         require(total <= MaxFees, ">MaxFees");
 
-        require(_lockFees >= 300 && _lockFees <= 1500, "!lockFees");
+        require(_lockFees >= 300 && _lockFees <= 3500, "!lockFees");
         require(_stakerFees >= 300 && _stakerFees <= 1500, "!stakerFees");
         require(_callerFees >= 10 && _callerFees <= 100, "!callerFees");
         require(_platform <= 200, "!platform");
@@ -297,6 +307,22 @@ contract Booster{
         treasury = _treasury;
 
         emit TreasuryUpdated(_treasury);
+    }
+
+    
+    /**
+     * @dev Set bridge delegate
+     * @param _bridgeDelegate The bridge delegate address
+     */
+    function setBridgeDelegate(address _bridgeDelegate) external {
+        require(msg.sender == feeManager, "!auth");
+        bridgeDelegate = _bridgeDelegate;
+    }
+
+    function setRewardMultiplier(address rewardContract, uint256 multiplier) external {
+        require(msg.sender == feeManager, "!auth");
+        require(multiplier <= REWARD_MULTIPLIER_DENOMINATOR * 2, "too high");
+        getRewardMultipliers[rewardContract] = multiplier;
     }
 
     /// END SETTER SECTION ///
@@ -346,6 +372,9 @@ contract Booster{
             IRewardFactory(rewardFactory).setAccess(stash,true);
         }
 
+        // Init the pool with the default reward multiplier
+        getRewardMultipliers[newRewardPool] = REWARD_MULTIPLIER_DENOMINATOR;
+
         emit PoolAdded(_lptoken, _gauge, token, newRewardPool, stash, pid);
         return true;
     }
@@ -354,7 +383,7 @@ contract Booster{
      * @notice Shuts down the pool by withdrawing everything from the gauge to here (can later be
      *         claimed from depositors by using the withdraw fn) and marking it as shut down
      */
-    function shutdownPool(uint256 _pid) external returns(bool){
+    function shutdownPool(uint256 _pid) external nonReentrant returns(bool){
         require(msg.sender==poolManager, "!auth");
         PoolInfo storage pool = poolInfo[_pid];
 
@@ -395,7 +424,7 @@ contract Booster{
      * @notice  Deposits an "_amount" to a given gauge (specified by _pid), mints a `DepositToken`
      *          and subsequently stakes that on Convex BaseRewardPool
      */
-    function deposit(uint256 _pid, uint256 _amount, bool _stake) public returns(bool){
+    function deposit(uint256 _pid, uint256 _amount, bool _stake) public nonReentrant returns(bool){
         require(!isShutdown,"shutdown");
         PoolInfo storage pool = poolInfo[_pid];
         require(pool.shutdown == false, "pool is closed");
@@ -451,7 +480,7 @@ contract Booster{
      *          3. If stash, stash rewards
      *          4. Transfer out the LP tokens
      */
-    function _withdraw(uint256 _pid, uint256 _amount, address _from, address _to) internal {
+    function _withdraw(uint256 _pid, uint256 _amount, address _from, address _to) internal nonReentrant {
         PoolInfo storage pool = poolInfo[_pid];
         address lptoken = pool.lptoken;
         address gauge = pool.gauge;
@@ -512,11 +541,20 @@ contract Booster{
     /**
      * @notice set valid vote hash on VoterProxy 
      */
-    function setVote(bytes32 _hash, bool valid) external returns(bool){
+    function setVote(bytes32 _hash) external returns(bool){
         require(msg.sender == voteDelegate, "!auth");
         
-        IStaker(staker).setVote(_hash, valid);
+        IStaker(staker).setVote(_hash, false);
         return true;
+    }
+
+    /**
+     * @notice Set delegate on snapshot
+     */
+    function setDelegate(address _delegateContract, address _delegate, bytes32 _space) external{
+        require(msg.sender == voteDelegate, "!auth");
+        bytes memory data = abi.encodeWithSelector(bytes4(keccak256("setDelegate(bytes32,address)")), _space, _delegate);
+        IStaker(staker).execute(_delegateContract,uint256(0),data);
     }
 
     /**
@@ -576,8 +614,22 @@ contract Booster{
 
         address gauge = pool.gauge;
 
+        // If there is idle CRV in the Booster we need to transfer it out
+        // in order that our accounting doesn't get scewed.
+        uint256 crvBBalBefore = IERC20(crv).balanceOf(address(this));
+        uint256 crvVBalBefore = IERC20(crv).balanceOf(staker);
+        uint256 crvBalBefore = crvBBalBefore.add(crvVBalBefore);
+
         //claim crv
         IStaker(staker).claimCrv(gauge);
+
+        //crv balance
+        uint256 crvBalAfter = IERC20(crv).balanceOf(address(this));
+        uint crvBal = crvBalAfter.sub(crvBalBefore);
+
+        if(crvBalBefore > 0 && treasury != address(0)) {
+            IERC20(crv).transfer(treasury, crvBalBefore);
+        }
 
         //check if there are extra rewards
         address stash = pool.stash;
@@ -587,9 +639,6 @@ contract Booster{
             //process extra rewards
             IStash(stash).processStash();
         }
-
-        //crv balance
-        uint256 crvBal = IERC20(crv).balanceOf(address(this));
 
         if (crvBal > 0) {
             // LockIncentive = cvxCrv stakers (currently 10%)
@@ -632,7 +681,7 @@ contract Booster{
      *         Responsible for collecting the crv from gauge, and then redistributing to the correct place.
      *         Pays the caller a fee to process this.
      */
-    function earmarkRewards(uint256 _pid) external returns(bool){
+    function earmarkRewards(uint256 _pid) external nonReentrant returns(bool){
         require(!isShutdown,"shutdown");
         _earmarkRewards(_pid);
         return true;
@@ -642,7 +691,7 @@ contract Booster{
      * @notice Claim fees from curve distro contract, put in lockers' reward contract.
      *         lockFees is the secondary reward contract that uses the virtual balances from cvxCrv
      */
-    function earmarkFees(address _feeToken) external returns(bool){
+    function earmarkFees(address _feeToken) external nonReentrant returns(bool){
         require(!isShutdown,"shutdown");
         FeeDistro memory feeDistro = feeTokens[_feeToken];
         
@@ -650,7 +699,9 @@ contract Booster{
         require(!gaugeMap[_feeToken], "Invalid token");
 
         //claim fee rewards
-        uint256 tokenBalanceBefore = IERC20(_feeToken).balanceOf(address(this));
+        uint256 tokenBalanceVBefore = IERC20(_feeToken).balanceOf(staker);
+        uint256 tokenBalanceBBefore = IERC20(_feeToken).balanceOf(address(this));
+        uint256 tokenBalanceBefore = tokenBalanceBBefore.add(tokenBalanceVBefore);
         IStaker(staker).claimFees(feeDistro.distro, _feeToken);
         uint256 tokenBalanceAfter = IERC20(_feeToken).balanceOf(address(this));
         uint256 feesClaimed = tokenBalanceAfter.sub(tokenBalanceBefore);
@@ -670,10 +721,47 @@ contract Booster{
         address rewardContract = poolInfo[_pid].crvRewards;
         require(msg.sender == rewardContract || msg.sender == lockRewards, "!auth");
 
-        //mint reward tokens
-        ITokenMinter(minter).mint(_address,_amount);
+        uint256 mintAmount = _amount.mul(getRewardMultipliers[msg.sender]).div(REWARD_MULTIPLIER_DENOMINATOR);
+
+        if(mintAmount > 0) {
+            //mint reward tokens
+            ITokenMinter(minter).mint(_address, mintAmount);
+        }
         
         return true;
     }
+     
 
+    /**
+     * @dev Distribute fees from L2 to L1 reward contracts
+     * @param _amount Amount of fees to distribute
+     */
+    function distributeL2Fees(uint256 _amount) external nonReentrant {
+        require(msg.sender == bridgeDelegate, "!auth");
+
+        // calculate the rewards that were paid based on the incentives that
+        // are being distributed
+        uint256 totalIncentives = lockIncentive.add(stakerIncentive);
+        uint256 totalFarmed = _amount.mul(FEE_DENOMINATOR).div(totalIncentives);
+        uint256 eligibleForMint = totalFarmed.sub(_amount);
+
+        // Ensure that the total amount of rewards claimed per epoch is less than 70k
+        uint256 epoch = block.timestamp.div(epochLength);
+        l2FeesHistory[epoch] = l2FeesHistory[epoch].add(totalFarmed);
+        require(l2FeesHistory[epoch] <= 70000e18, "Too many L2 Fees");
+
+        // Calculate fees for individual reward contracts
+        uint256 _lockIncentive = _amount.mul(lockIncentive).div(totalIncentives);
+        uint256 _stakerIncentive = _amount.sub(_lockIncentive);
+
+        //send lockers' share of crv to reward contract
+        IERC20(crv).safeTransferFrom(bridgeDelegate, lockRewards, _lockIncentive);
+        IRewards(lockRewards).queueNewRewards(_lockIncentive);
+
+        //send stakers's share of crv to reward contract
+        IERC20(crv).safeTransferFrom(bridgeDelegate, stakerRewards, _stakerIncentive);
+
+        // Mint CVX to bridge delegate
+        ITokenMinter(minter).mint(bridgeDelegate, eligibleForMint);
+    }
 }

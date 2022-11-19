@@ -87,6 +87,7 @@ contract BaseRewardPool {
     event Staked(address indexed user, uint256 amount);
     event Withdrawn(address indexed user, uint256 amount);
     event RewardPaid(address indexed user, uint256 reward);
+    event Transfer(address indexed from, address indexed to, uint256 value);
 
     /**
      * @dev This is called directly from RewardFactory
@@ -221,6 +222,8 @@ contract BaseRewardPool {
 
         _totalSupply = _totalSupply.add(_amount);
         _balances[_receiver] = _balances[_receiver].add(_amount);
+
+        emit Transfer(address(0), _receiver, _amount);
     }
 
     function withdraw(uint256 amount, bool claim)
@@ -244,6 +247,8 @@ contract BaseRewardPool {
         if(claim){
             getReward(msg.sender,true);
         }
+
+        emit Transfer(msg.sender, address(0), amount);
 
         return true;
     }
@@ -273,6 +278,8 @@ contract BaseRewardPool {
         //tell operator to withdraw from here directly to user
         IDeposit(operator).withdrawTo(pid,amount,receiver);
         emit Withdrawn(from, amount);
+
+        emit Transfer(from, address(0), amount);
 
         return true;
     }
@@ -310,14 +317,6 @@ contract BaseRewardPool {
     function getReward() external returns(bool){
         getReward(msg.sender,true);
         return true;
-    }
-
-    /**
-     * @dev Donate some extra rewards to this contract
-     */
-    function donate(uint256 _amount) external returns(bool){
-        IERC20(rewardToken).safeTransferFrom(msg.sender, address(this), _amount);
-        queuedRewards = queuedRewards.add(_amount);
     }
 
     /**
