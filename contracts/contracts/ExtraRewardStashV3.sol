@@ -159,21 +159,20 @@ contract ExtraRewardStashV3 {
     function setToken(address _token) internal {
         TokenInfo storage t = tokenInfo[_token];
 
-        if(t.token == address(0)){
+        if(t.token == address(0) && _token != crv){
             //set token address
             t.token = _token;
 
-            //check if crv
-            if(_token != crv){
-                //create new reward contract (for NON-crv tokens only)
-                (,,,address mainRewardContract,,) = IDeposit(operator).poolInfo(pid);
-                address rewardContract = IRewardFactory(rewardFactory).CreateTokenRewards(
-                    _token,
-                    mainRewardContract,
-                    address(this));
-                
-                t.rewardAddress = rewardContract;
-            }
+            // we only want to add rewards that are not CRV
+            //create new reward contract (for NON-crv tokens only)
+            (,,,address mainRewardContract,,) = IDeposit(operator).poolInfo(pid);
+            address rewardContract = IRewardFactory(rewardFactory).CreateTokenRewards(
+                _token,
+                mainRewardContract,
+                address(this));
+            
+            t.rewardAddress = rewardContract;
+
             //add token to list of known rewards
             tokenList.push(_token);
         }
@@ -190,8 +189,7 @@ contract ExtraRewardStashV3 {
 
     /**
      * @notice  Distribute rewards
-     * @dev     Send all CRV to the Booster contract and send all extra token
-     *          rewards to the rewardContract VirtualRewardsPool
+     * @dev     Send all extra token rewards to the rewardContract VirtualRewardsPool
      *          Called by Booster earmarkRewards
      */
     function processStash() external returns(bool){
@@ -206,11 +204,6 @@ contract ExtraRewardStashV3 {
             uint256 amount = IERC20(token).balanceOf(address(this));
             if (amount > 0) {
                 historicalRewards[token] = historicalRewards[token].add(amount);
-                if(token == crv){
-                    //if crv, send back to booster to distribute
-                    IERC20(token).safeTransfer(operator, amount);
-                    continue;
-                }
             	//add to reward contract
             	address rewards = t.rewardAddress;
             	if(rewards == address(0)) continue;
