@@ -138,6 +138,8 @@ interface IPools{
     function poolLength() external view returns (uint256);
     function gaugeMap(address) external view returns(bool);
     function setPoolManager(address _poolM) external;
+    function shutdownSystem() external;
+    function setUsedAddress(address[] memory) external;
 }
 
 interface IVestedEscrow{
