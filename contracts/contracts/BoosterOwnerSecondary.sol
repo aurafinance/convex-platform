@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.6.12;
 
-import { IPools } from "./Interfaces.sol";
+import { IPools, IStash, IStashFactory } from "./Interfaces.sol";
 import { IBoosterOwner } from "./BoosterOwner.sol";
 
 interface IFeeTokenVerifier {
@@ -160,11 +160,10 @@ contract BoosterOwnerSecondary {
         }
 
         require(
-            sig != IBoosterOwner(boosterOwner).setFactories.selector && 
-                sig != IBoosterOwner(boosterOwner).setStashFactoryImplementation.selector &&
-                sig != IBoosterOwner(boosterOwner).setStashExtraReward.selector &&
-                sig != IBoosterOwner(boosterOwner).transferOwnership.selector &&
-                sig != IBoosterOwner(boosterOwner).setFeeInfo.selector,
+            sig != IBoosterOwner.setFactories.selector && 
+                sig != IStashFactory.setImplementation.selector &&
+                sig != IStash.setExtraReward.selector &&
+                sig != IBoosterOwner.setFeeInfo.selector,
             "!allowed"
         );
 
