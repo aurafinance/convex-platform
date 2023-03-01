@@ -9,4 +9,5 @@ interface IGaugeController {
     function add_gauge(address,int128,uint256) external;
     function gauges(uint256) external view returns(address);
     function checkpoint_gauge(address) external;
+    function n_gauges() external view returns(uint256);
 }
