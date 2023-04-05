@@ -8,6 +8,14 @@ import "@openzeppelin/contracts-0.6/utils/Address.sol";
 import "@openzeppelin/contracts-0.6/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts-0.6/utils/ReentrancyGuard.sol";
 
+interface ICoordinator {
+    function queueNewRewards(
+        address,
+        uint256,
+        bytes memory
+    ) external payable;
+}
+
 /**
  * @title   BoosterLite
  * @author  ConvexFinance -> AuraFinance
@@ -462,27 +470,30 @@ contract BoosterLite is ReentrancyGuard {
      *         Responsible for collecting the crv from gauge, and then redistributing to the correct place.
      *         Pays the caller a fee to process this.
      */
-    function _earmarkRewards(uint256 _pid) internal {
+    function _earmarkRewards(uint256 _pid, bytes memory _adapterParams) internal {
         PoolInfo storage pool = poolInfo[_pid];
         require(pool.shutdown == false, "pool is closed");
 
         address gauge = pool.gauge;
 
-        // If there is idle CRV in the Booster we need to transfer it out
-        // in order that our accounting doesn't get scewed.
-        uint256 crvBBalBefore = IERC20(crv).balanceOf(address(this));
-        uint256 crvVBalBefore = IERC20(crv).balanceOf(staker);
-        uint256 crvBalBefore = crvBBalBefore.add(crvVBalBefore);
+        uint256 crvBal;
+        {
+            // If there is idle CRV in the Booster we need to transfer it out
+            // in order that our accounting doesn't get scewed.
+            uint256 crvBBalBefore = IERC20(crv).balanceOf(address(this));
+            uint256 crvVBalBefore = IERC20(crv).balanceOf(staker);
+            uint256 crvBalBefore = crvBBalBefore.add(crvVBalBefore);
 
-        //claim crv
-        IStaker(staker).claimCrv(gauge);
+            //claim crv
+            IStaker(staker).claimCrv(gauge);
 
-        //crv balance
-        uint256 crvBalAfter = IERC20(crv).balanceOf(address(this));
-        uint256 crvBal = crvBalAfter.sub(crvBalBefore);
+            //crv balance
+            uint256 crvBalAfter = IERC20(crv).balanceOf(address(this));
+            crvBal = crvBalAfter.sub(crvBalBefore);
 
-        if (crvBalBefore > 0 && treasury != address(0)) {
-            IERC20(crv).transfer(treasury, crvBalBefore);
+            if (crvBalBefore > 0 && treasury != address(0)) {
+                IERC20(crv).transfer(treasury, crvBalBefore);
+            }
         }
 
         //check if there are extra rewards
@@ -514,7 +525,7 @@ contract BoosterLite is ReentrancyGuard {
 
             //send lockers' share of crv to reward contract
             IERC20(crv).safeTransfer(rewards, _totalIncentive);
-            IRewards(rewards).queueNewRewards(_totalIncentive);
+            ICoordinator(rewards).queueNewRewards{ value: msg.value }(msg.sender, _totalIncentive, _adapterParams);
         }
     }
 
@@ -523,9 +534,9 @@ contract BoosterLite is ReentrancyGuard {
      *         Responsible for collecting the crv from gauge, and then redistributing to the correct place.
      *         Pays the caller a fee to process this.
      */
-    function earmarkRewards(uint256 _pid) external nonReentrant returns (bool) {
+    function earmarkRewards(uint256 _pid, bytes memory _adapterParams) external payable nonReentrant returns (bool) {
         require(!isShutdown, "shutdown");
-        _earmarkRewards(_pid);
+        _earmarkRewards(_pid, _adapterParams);
         return true;
     }
 
