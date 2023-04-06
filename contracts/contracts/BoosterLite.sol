@@ -9,11 +9,7 @@ import "@openzeppelin/contracts-0.6/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts-0.6/utils/ReentrancyGuard.sol";
 
 interface ICoordinator {
-    function queueNewRewards(
-        address,
-        uint256,
-        bytes memory
-    ) external payable;
+    function queueNewRewards(address, uint256) external payable;
 }
 
 /**
@@ -470,7 +466,7 @@ contract BoosterLite is ReentrancyGuard {
      *         Responsible for collecting the crv from gauge, and then redistributing to the correct place.
      *         Pays the caller a fee to process this.
      */
-    function _earmarkRewards(uint256 _pid, bytes memory _adapterParams) internal {
+    function _earmarkRewards(uint256 _pid) internal {
         PoolInfo storage pool = poolInfo[_pid];
         require(pool.shutdown == false, "pool is closed");
 
@@ -525,7 +521,7 @@ contract BoosterLite is ReentrancyGuard {
 
             //send lockers' share of crv to reward contract
             IERC20(crv).safeTransfer(rewards, _totalIncentive);
-            ICoordinator(rewards).queueNewRewards{ value: msg.value }(msg.sender, _totalIncentive, _adapterParams);
+            ICoordinator(rewards).queueNewRewards{ value: msg.value }(msg.sender, _totalIncentive);
         }
     }
 
@@ -534,9 +530,9 @@ contract BoosterLite is ReentrancyGuard {
      *         Responsible for collecting the crv from gauge, and then redistributing to the correct place.
      *         Pays the caller a fee to process this.
      */
-    function earmarkRewards(uint256 _pid, bytes memory _adapterParams) external payable nonReentrant returns (bool) {
+    function earmarkRewards(uint256 _pid) external payable nonReentrant returns (bool) {
         require(!isShutdown, "shutdown");
-        _earmarkRewards(_pid, _adapterParams);
+        _earmarkRewards(_pid);
         return true;
     }
 
