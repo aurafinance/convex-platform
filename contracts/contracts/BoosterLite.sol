@@ -9,11 +9,7 @@ import "@openzeppelin/contracts-0.6/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts-0.6/utils/ReentrancyGuard.sol";
 
 interface ICoordinator {
-    function queueNewRewards(
-        address,
-        uint256,
-        bytes memory
-    ) external payable;
+    function queueNewRewards(address, uint256) external payable;
 }
 
 /**
