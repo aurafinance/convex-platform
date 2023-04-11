@@ -32,12 +32,12 @@ contract VoterProxyLite {
     /**
      * @param _mintr            CRV minter
      * @param _crv              CRV Token address
+     * @param _owner            Owner address
      */
-    constructor(address _mintr, address _crv) public {
+    constructor(address _mintr, address _crv, address _owner) public {
         mintr = _mintr;
         crv = _crv;
-        owner = msg.sender;
-
+        owner = _owner;
         protectedTokens[_crv] = true;
     }
 
