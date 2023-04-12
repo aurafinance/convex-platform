@@ -80,27 +80,25 @@ contract BoosterLite is ReentrancyGuard {
      * @param _staker                 VoterProxy (locks the crv and adds to all gauges)
      * @param _minter                 CVX token, or the thing that mints it
      * @param _crv                    CRV
-     * @param _owner                  Owner, Fee Manager and Pool Manager address.
      */
     constructor(
         address _staker,
         address _minter,
-        address _crv,
-        address _owner
+        address _crv
     ) public {
         staker = _staker;
         minter = _minter;
         crv = _crv;
         isShutdown = false;
 
-        owner = _owner;
-        feeManager = _owner;
-        poolManager = _owner;
+        owner = msg.sender;
+        feeManager = msg.sender;
+        poolManager = msg.sender;
         treasury = address(0);
 
-        emit OwnerUpdated(_owner);
-        emit FeeManagerUpdated(_owner);
-        emit PoolManagerUpdated(_owner);
+        emit OwnerUpdated(msg.sender);
+        emit FeeManagerUpdated(msg.sender);
+        emit PoolManagerUpdated(msg.sender);
     }
 
     /// SETTER SECTION ///
