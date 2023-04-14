@@ -18,10 +18,10 @@ contract PoolManagerLite {
     address public operator;
     bool public protectAddPool;
 
-    constructor(address _booster, address _operator) public {
+    constructor(address _booster) public {
         booster = _booster;
-        operator = _operator;
         protectAddPool = true;
+        operator = msg.sender;
     }
 
     function setOperator(address _operator) external {

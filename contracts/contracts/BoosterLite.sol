@@ -22,7 +22,7 @@ contract BoosterLite is ReentrancyGuard {
     using Address for address;
     using SafeMath for uint256;
 
-    address public immutable crv;
+    address public crv;
 
     uint256 public lockIncentive = 825; //incentive to crv stakers
     uint256 public stakerIncentive = 825; //incentive to native token stakers
@@ -35,7 +35,7 @@ contract BoosterLite is ReentrancyGuard {
     address public feeManager;
     address public poolManager;
     address public immutable staker;
-    address public immutable minter;
+    address public minter;
     address public rewardFactory;
     address public stashFactory;
     address public tokenFactory;
@@ -78,23 +78,32 @@ contract BoosterLite is ReentrancyGuard {
      * @dev Constructor doing what constructors do. It is noteworthy that
      *      a lot of basic config is set to 0 - expecting subsequent calls to setFeeInfo etc.
      * @param _staker                 VoterProxy (locks the crv and adds to all gauges)
-     * @param _minter                 CVX token, or the thing that mints it
-     * @param _crv                    CRV
      */
-    constructor(
-        address _staker,
-        address _minter,
-        address _crv
-    ) public {
+    constructor(address _staker) public {
         staker = _staker;
-        minter = _minter;
-        crv = _crv;
         isShutdown = false;
 
         owner = msg.sender;
-        feeManager = msg.sender;
-        poolManager = msg.sender;
         treasury = address(0);
+
+        emit OwnerUpdated(msg.sender);
+    }
+
+    /**
+     * @notice Initialize the contract.
+     * @param _minter           CVX token, or the thing that mints it
+     * @param _crv              CRV Token address
+     * @param _owner            Owner address
+     */
+
+    function initialize(address _minter, address _crv, address _owner) external {
+        require(msg.sender == owner, "!auth");
+        require(crv == address(0), "Only once");
+        minter = _minter;
+        crv = _crv;     
+        owner = _owner;
+        feeManager = _owner;
+        poolManager = _owner; 
 
         emit OwnerUpdated(msg.sender);
         emit FeeManagerUpdated(msg.sender);
