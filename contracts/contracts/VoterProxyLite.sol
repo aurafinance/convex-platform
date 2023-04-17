@@ -18,7 +18,7 @@ contract VoterProxyLite {
     using SafeMath for uint256;
 
     address public mintr;
-    address public immutable crv;
+    address public crv;
 
     address public rewardDeposit;
     address public withdrawer;
@@ -29,14 +29,22 @@ contract VoterProxyLite {
     mapping(address => bool) private stashPool;
     mapping(address => bool) private protectedTokens;
 
+    constructor() public {
+        owner = msg.sender;
+    }
+
     /**
+     * @notice Initialize the contract.
      * @param _mintr            CRV minter
      * @param _crv              CRV Token address
+     * @param _owner            The owner
      */
-    constructor(address _mintr, address _crv) public {
+    function initialize(address _mintr, address _crv, address _owner) external {
+        require(msg.sender == owner, "!auth");
+        require(crv == address(0), "Only once");
         mintr = _mintr;
         crv = _crv;
-        owner = msg.sender;
+        owner = _owner;
         protectedTokens[_crv] = true;
     }
 
