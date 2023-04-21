@@ -96,14 +96,18 @@ contract BoosterLite is ReentrancyGuard {
      * @param _owner            Owner address
      */
 
-    function initialize(address _minter, address _crv, address _owner) external {
+    function initialize(
+        address _minter,
+        address _crv,
+        address _owner
+    ) external {
         require(msg.sender == owner, "!auth");
         require(crv == address(0), "Only once");
         minter = _minter;
-        crv = _crv;     
+        crv = _crv;
         owner = _owner;
         feeManager = _owner;
-        poolManager = _owner; 
+        poolManager = _owner;
 
         emit OwnerUpdated(msg.sender);
         emit FeeManagerUpdated(msg.sender);
@@ -527,6 +531,11 @@ contract BoosterLite is ReentrancyGuard {
 
             //send incentives for calling
             IERC20(crv).safeTransfer(msg.sender, _callIncentive);
+
+            //send crv to lp provider reward contract
+            address rewardContract = pool.crvRewards;
+            IERC20(crv).safeTransfer(rewardContract, crvBal);
+            IRewards(rewardContract).queueNewRewards(crvBal);
 
             //send lockers' share of crv to reward contract
             IERC20(crv).safeTransfer(rewards, _totalIncentive);
