@@ -5,7 +5,6 @@ pragma solidity 0.6.12;
 interface IOwner {
     //booster lite
     function setFactories(address _rfactory, address _sfactory, address _tfactory) external;
-    function updateFeeInfo(address _feeToken, bool _active) external;
     function shutdownSystem() external;
     function isShutdown() external view returns(bool);
     function poolLength() external view returns(uint256);
@@ -30,7 +29,6 @@ interface IBoosterOwnerLite {
     function transferOwnership(address _owner) external;
     function acceptOwnership() external;
     function setFactories(address _rfactory, address _sfactory, address _tfactory) external;
-    function updateFeeInfo(address _feeToken, bool _active) external;
     function setFeeManager(address _feeM) external;
     function shutdownSystem() external;
     function queueForceShutdown() external;
@@ -128,11 +126,6 @@ contract BoosterOwnerLite is IBoosterOwnerLite{
         IOwner(booster).setFactories(_rfactory, _sfactory, _tfactory);
     }
 
-
-
-    function updateFeeInfo(address _feeToken, bool _active) external override onlyOwner{
-        IOwner(booster).updateFeeInfo(_feeToken, _active);
-    }
 
     function setFeeManager(address _feeM) external override onlyOwner{
         IOwner(booster).setFeeManager(_feeM);

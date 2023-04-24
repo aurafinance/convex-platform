@@ -17,10 +17,15 @@ contract VoterProxyLite {
 
     address public mintr;
     address public crv;
+
+    address public rewardDeposit;
+    address public withdrawer;
+
     address public owner;
     address public operator;
 
     mapping(address => bool) private stashPool;
+    mapping(address => bool) private protectedTokens;
 
     constructor() public {
         owner = msg.sender;
@@ -38,6 +43,7 @@ contract VoterProxyLite {
         mintr = _mintr;
         crv = _crv;
         owner = _owner;
+        protectedTokens[_crv] = true;
     }
 
     function getName() external pure returns (string memory) {
@@ -49,6 +55,16 @@ contract VoterProxyLite {
         owner = _owner;
     }
 
+    /**
+     * @notice Allows dao to set the reward withdrawal address
+     * @param _withdrawer Whitelisted withdrawer
+     * @param _rewardDeposit Distributor address
+     */
+    function setRewardDeposit(address _withdrawer, address _rewardDeposit) external {
+        require(msg.sender == owner, "!auth");
+        withdrawer = _withdrawer;
+        rewardDeposit = _rewardDeposit;
+    }
 
     /**
      * @notice Allows dao to set the external system config, should it change in the future
@@ -88,6 +104,12 @@ contract VoterProxyLite {
      */
     function deposit(address _token, address _gauge) external returns (bool) {
         require(msg.sender == operator, "!auth");
+        if (protectedTokens[_token] == false) {
+            protectedTokens[_token] = true;
+        }
+        if (protectedTokens[_gauge] == false) {
+            protectedTokens[_gauge] = true;
+        }
         uint256 balance = IERC20(_token).balanceOf(address(this));
         if (balance > 0) {
             IERC20(_token).safeApprove(_gauge, 0);
@@ -95,6 +117,22 @@ contract VoterProxyLite {
             ICurveGauge(_gauge).deposit(balance);
         }
         return true;
+    }
+
+    /**
+     * @notice  Withdraw ERC20 tokens that have been distributed as extra rewards
+     * @dev     Tokens shouldn't end up here if they can help it. However, dao can
+     *          set a withdrawer that can process these to some ExtraRewardDistribution.
+     */
+    function withdraw(IERC20 _asset) external returns (uint256 balance) {
+        require(msg.sender == withdrawer, "!auth");
+        require(protectedTokens[address(_asset)] == false, "protected");
+
+        balance = _asset.balanceOf(address(this));
+        _asset.safeApprove(rewardDeposit, 0);
+        _asset.safeApprove(rewardDeposit, balance);
+        IRewardDeposit(rewardDeposit).addReward(address(_asset), balance);
+        return balance;
     }
 
     /**
