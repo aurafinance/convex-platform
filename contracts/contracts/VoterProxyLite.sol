@@ -4,7 +4,6 @@ pragma solidity 0.6.12;
 import "./Interfaces.sol";
 import "@openzeppelin/contracts-0.6/math/SafeMath.sol";
 import "@openzeppelin/contracts-0.6/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts-0.6/utils/Address.sol";
 import "@openzeppelin/contracts-0.6/token/ERC20/SafeERC20.sol";
 
 /**
@@ -14,7 +13,6 @@ import "@openzeppelin/contracts-0.6/token/ERC20/SafeERC20.sol";
  */
 contract VoterProxyLite {
     using SafeERC20 for IERC20;
-    using Address for address;
     using SafeMath for uint256;
 
     address public mintr;

@@ -40,7 +40,6 @@ contract BoosterLite is ReentrancyGuard {
     address public stashFactory;
     address public tokenFactory;
     address public treasury;
-    address public stakerRewards; //cvx rewards
     address public rewards; //cvxCrv rewards(crv)
     uint256 immutable epochLength = 1 weeks;
 
@@ -69,15 +68,14 @@ contract BoosterLite is ReentrancyGuard {
     event FeeManagerUpdated(address newFeeManager);
     event PoolManagerUpdated(address newPoolManager);
     event FactoriesUpdated(address rewardFactory, address stashFactory, address tokenFactory);
-    event ArbitratorUpdated(address newArbitrator);
     event RewardContractsUpdated(address rewards);
     event FeesUpdated(uint256 lockIncentive, uint256 stakerIncentive, uint256 earmarkIncentive, uint256 platformFee);
     event TreasuryUpdated(address newTreasury);
 
     /**
      * @dev Constructor doing what constructors do. It is noteworthy that
-     *      a lot of basic config is set to 0 - expecting subsequent calls to setFeeInfo etc.
-     * @param _staker                 VoterProxy (locks the crv and adds to all gauges)
+     *      a lot of basic config is set to 0 - expecting subsequent calls setFeeManager etc.
+     * @param _staker          VoterProxyLite (locks the crv and adds to all gauges)
      */
     constructor(address _staker) public {
         staker = _staker;
@@ -174,7 +172,7 @@ contract BoosterLite is ReentrancyGuard {
     }
 
     /**
-     * @notice Only called once, to set the addresses of cvxCrv (rewards) and cvx staking (stakerRewards)
+     * @notice Only called once, to set the addresses of cvxCrv (rewards)
      */
     function setRewardContracts(address _rewards) external {
         require(msg.sender == owner, "!auth");
