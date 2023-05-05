@@ -17,6 +17,7 @@ contract PoolManagerLite {
     address public immutable booster;
     address public operator;
     bool public protectAddPool;
+    bool public isShutdown;
 
     constructor(address _booster) public {
         booster = _booster;
@@ -70,5 +71,11 @@ contract PoolManagerLite {
         require(afterBalance.sub(beforeBalance) >= IERC20(depositToken).totalSupply(), "supply mismatch");
 
         return true;
+    }
+
+    //shutdown pool management and disallow new pools. change is immutable
+    function shutdownSystem() external {
+        require(msg.sender == operator, "!auth");
+        isShutdown = true;
     }
 }
