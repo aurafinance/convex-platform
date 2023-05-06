@@ -299,20 +299,20 @@ contract BaseRewardPool4626 is BaseRewardPool, ReentrancyGuard, IERC4626 {
         return true;
     }
 
-    function _transfer(address from, address to, uint256 amount) internal virtual {
+    function _transfer(address from, address to, uint256 amount) internal updateReward(from) updateReward(to)  virtual {
         require(from != address(0), "ERC20: transfer from the zero address");
         require(to != address(0), "ERC20: transfer to the zero address");
 
         uint256 fromBalance = _balances[from];
         require(fromBalance >= amount, "ERC20: transfer amount exceeds balance");
-        _balances[from] = fromBalance - amount;
-        _balances[to] += amount;
 
         for(uint i=0; i < extraRewards.length; i++){
             IRewards(extraRewards[i]).withdraw(from , amount);
             IRewards(extraRewards[i]).stake(to, amount);
         }
 
+        _balances[from] = fromBalance - amount;
+        _balances[to] += amount;
         emit Transfer(from, to, amount);
     }
 }

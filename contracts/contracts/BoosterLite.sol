@@ -41,8 +41,6 @@ contract BoosterLite is ReentrancyGuard {
     address public tokenFactory;
     address public treasury;
     address public rewards; //cvxCrv rewards(crv)
-    uint256 immutable epochLength = 1 weeks;
-
     bool public isShutdown;
 
     struct PoolInfo {
@@ -499,7 +497,7 @@ contract BoosterLite is ReentrancyGuard {
             crvBal = crvBalAfter.sub(crvBalBefore);
 
             if (crvBalBefore > 0 && treasury != address(0)) {
-                IERC20(crv).transfer(treasury, crvBalBefore);
+                IERC20(crv).safeTransfer(treasury, crvBalBefore);
             }
         }
 
