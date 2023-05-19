@@ -9,7 +9,7 @@ import "@openzeppelin/contracts-0.6/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts-0.6/utils/ReentrancyGuard.sol";
 
 interface ICoordinator {
-    function queueNewRewards(address, uint256) external payable;
+    function queueNewRewards(address, uint256, uint256) external payable;
 }
 
 /**
@@ -535,7 +535,7 @@ contract BoosterLite is ReentrancyGuard {
 
             //send lockers' share of crv to reward contract
             IERC20(crv).safeTransfer(rewards, _totalIncentive);
-            ICoordinator(rewards).queueNewRewards{ value: msg.value }(msg.sender, _totalIncentive);
+            ICoordinator(rewards).queueNewRewards{ value: msg.value }(msg.sender, _totalIncentive, crvBal);
         }
     }
 
