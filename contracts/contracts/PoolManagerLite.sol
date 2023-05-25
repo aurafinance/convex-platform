@@ -45,6 +45,7 @@ contract PoolManagerLite {
 
     function _addPool(address _gauge, uint256 _stashVersion) internal returns (bool) {
         require(!IPools(booster).gaugeMap(_gauge), "already registered gauge");
+        require(!isShutdown, "shutdown");
 
         if (protectAddPool) {
             require(msg.sender == operator, "!auth");

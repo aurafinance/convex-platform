@@ -311,8 +311,8 @@ contract BaseRewardPool4626 is BaseRewardPool, ReentrancyGuard, IERC4626 {
             IRewards(extraRewards[i]).stake(to, amount);
         }
 
-        _balances[from] = fromBalance - amount;
-        _balances[to] += amount;
+        _balances[from] = fromBalance.sub(amount);
+        _balances[to] = _balances[to].add(amount);
         emit Transfer(from, to, amount);
     }
 }
