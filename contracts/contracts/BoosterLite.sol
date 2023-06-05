@@ -9,7 +9,12 @@ import "@openzeppelin/contracts-0.6/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts-0.6/utils/ReentrancyGuard.sol";
 
 interface ICoordinator {
-    function queueNewRewards(address, uint256, uint256) external payable;
+    function queueNewRewards(
+        address,
+        uint256,
+        uint256,
+        address
+    ) external payable;
 }
 
 /**
@@ -475,11 +480,9 @@ contract BoosterLite is ReentrancyGuard {
      *         Responsible for collecting the crv from gauge, and then redistributing to the correct place.
      *         Pays the caller a fee to process this.
      */
-    function _earmarkRewards(uint256 _pid) internal {
+    function _earmarkRewards(uint256 _pid, address _zroPaymentAddress) internal {
         PoolInfo storage pool = poolInfo[_pid];
         require(pool.shutdown == false, "pool is closed");
-
-        address gauge = pool.gauge;
 
         uint256 crvBal;
         {
@@ -490,7 +493,7 @@ contract BoosterLite is ReentrancyGuard {
             uint256 crvBalBefore = crvBBalBefore.add(crvVBalBefore);
 
             //claim crv
-            IStaker(staker).claimCrv(gauge);
+            IStaker(staker).claimCrv(pool.gauge);
 
             //crv balance
             uint256 crvBalAfter = IERC20(crv).balanceOf(address(this));
@@ -535,7 +538,12 @@ contract BoosterLite is ReentrancyGuard {
 
             //send lockers' share of crv to reward contract
             IERC20(crv).safeTransfer(rewards, _totalIncentive);
-            ICoordinator(rewards).queueNewRewards{ value: msg.value }(msg.sender, _totalIncentive, crvBal);
+            ICoordinator(rewards).queueNewRewards{ value: msg.value }(
+                msg.sender,
+                _totalIncentive,
+                crvBal,
+                _zroPaymentAddress
+            );
         }
     }
 
@@ -544,9 +552,9 @@ contract BoosterLite is ReentrancyGuard {
      *         Responsible for collecting the crv from gauge, and then redistributing to the correct place.
      *         Pays the caller a fee to process this.
      */
-    function earmarkRewards(uint256 _pid) external payable nonReentrant returns (bool) {
+    function earmarkRewards(uint256 _pid, address _zroPaymentAddress) external payable nonReentrant returns (bool) {
         require(!isShutdown, "shutdown");
-        _earmarkRewards(_pid);
+        _earmarkRewards(_pid, _zroPaymentAddress);
         return true;
     }
 
