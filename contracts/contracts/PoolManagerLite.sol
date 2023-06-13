@@ -16,23 +16,16 @@ contract PoolManagerLite {
 
     address public immutable booster;
     address public operator;
-    bool public protectAddPool;
     bool public isShutdown;
 
     constructor(address _booster) public {
         booster = _booster;
-        protectAddPool = true;
         operator = msg.sender;
     }
 
     function setOperator(address _operator) external {
         require(msg.sender == operator, "!auth");
         operator = _operator;
-    }
-
-    function setProtectPool(bool _protectAddPool) external {
-        require(msg.sender == operator, "!auth");
-        protectAddPool = _protectAddPool;
     }
 
     function addPool(address _gauge) external returns (bool) {
@@ -44,12 +37,9 @@ contract PoolManagerLite {
     }
 
     function _addPool(address _gauge, uint256 _stashVersion) internal returns (bool) {
+        require(msg.sender == operator, "!auth");
         require(!IPools(booster).gaugeMap(_gauge), "already registered gauge");
         require(!isShutdown, "shutdown");
-
-        if (protectAddPool) {
-            require(msg.sender == operator, "!auth");
-        }
 
         address lptoken = ICurveGauge(_gauge).lp_token();
         require(!IPools(booster).gaugeMap(lptoken), "already registered lptoken");
