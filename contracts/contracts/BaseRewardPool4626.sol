@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.6.12;
 
+import { IRewards } from "./Interfaces.sol";
 import { BaseRewardPool, IDeposit } from "./BaseRewardPool.sol";
 import { IERC4626, IERC20Metadata } from "./interfaces/IERC4626.sol";
 import { IERC20 } from "@openzeppelin/contracts-0.6/token/ERC20/IERC20.sol";
@@ -250,8 +251,9 @@ contract BaseRewardPool4626 is BaseRewardPool, ReentrancyGuard, IERC4626 {
      *
      * Emits a {Transfer} event.
      */
-    function transfer(address /* recipient */, uint256 /* amount */) external override returns (bool) {
-        revert("ERC4626: Not supported");
+    function transfer(address recipient, uint256 amount) external override returns (bool) {
+        _transfer(msg.sender, recipient, amount);
+        return true;
     }
 
 
@@ -290,7 +292,27 @@ contract BaseRewardPool4626 is BaseRewardPool, ReentrancyGuard, IERC4626 {
      * allowance mechanism. `amount` is then deducted from the caller's
      * allowance.
      */
-    function transferFrom(address /* sender */, address /* recipient */, uint256 /* amount */) external override returns (bool) {
-        revert("ERC4626: Not supported");
+    function transferFrom(address owner, address recipient, uint256 amount) external override returns (bool) {
+        uint256 newAllowance = _allowances[owner][msg.sender].sub(amount, "ERC4626: withdrawal amount exceeds allowance");
+        _approve(owner, msg.sender, newAllowance);
+        _transfer(owner, recipient, amount);
+        return true;
+    }
+
+    function _transfer(address from, address to, uint256 amount) internal updateReward(from) updateReward(to)  virtual {
+        require(from != address(0), "ERC20: transfer from the zero address");
+        require(to != address(0), "ERC20: transfer to the zero address");
+
+        uint256 fromBalance = _balances[from];
+        require(fromBalance >= amount, "ERC20: transfer amount exceeds balance");
+
+        for(uint i=0; i < extraRewards.length; i++){
+            IRewards(extraRewards[i]).withdraw(from , amount);
+            IRewards(extraRewards[i]).stake(to, amount);
+        }
+
+        _balances[from] = fromBalance.sub(amount);
+        _balances[to] = _balances[to].add(amount);
+        emit Transfer(from, to, amount);
     }
 }
