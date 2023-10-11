@@ -68,7 +68,7 @@ abstract contract VirtualBalanceWrapper {
 
 /**
  * @title   VirtualBalanceRewardPool
- * @author  ConvexFinance
+ * @author  ConvexFinance => AuraFinance
  * @notice  Reward pool used for ExtraRewards in Booster lockFees (3crv) and
  *          Extra reward stashes
  * @dev     The rewards are sent to this contract for distribution to stakers. This
@@ -77,10 +77,15 @@ abstract contract VirtualBalanceWrapper {
  *          For example the Booster sends veCRV fees (3Crv) to a VirtualBalanceRewardPool
  *          which tracks the virtual balance of cxvCRV stakers and distributes their share
  *          of 3Crv rewards
+ *          
+ *          AuraFinance
+ *          - rewardToken: is the StashToken a non-ERC20 compliant contract, the ERC20 token
+ *           is the StashToken.baseToken.
  */
 contract VirtualBalanceRewardPool is VirtualBalanceWrapper {
     using SafeERC20 for IERC20;
     
+    /// @notice The StashToken address, it is not an ERC20 it is a wrapper of the reward token.
     IERC20 public immutable rewardToken;
     uint256 public constant duration = 7 days;
 
@@ -105,7 +110,7 @@ contract VirtualBalanceRewardPool is VirtualBalanceWrapper {
 
     /**
      * @param deposit_  Parent deposit pool e.g cvxCRV staking in BaseRewardPool
-     * @param reward_   The rewards token e.g 3Crv
+     * @param reward_   The Stashtoken contract wrapping the reward token e.g 3Crv
      * @param op_       Operator contract (Booster)
      */
     constructor(
@@ -190,7 +195,8 @@ contract VirtualBalanceRewardPool is VirtualBalanceWrapper {
      * @notice  Get rewards for this account
      * @dev     This can be called directly but it is usually called by the
      *          BaseRewardPool getReward when the BaseRewardPool loops through
-     *          it's extraRewards array calling getReward on all of them
+     *          it's extraRewards array calling getReward on all of them.
+     *          It transfers the StashToken.baseToken to the account.
      */
     function getReward(address _account) public updateReward(_account){
         uint256 reward = earned(_account);

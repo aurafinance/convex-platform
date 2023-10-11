@@ -16,7 +16,9 @@ interface IERC20Metadata {
  * @title StashToken
  * @notice StashToken is not ERC20 compliant. 
  * @dev StashToken is not ERC20 compliant. 
- *      it represents a token that can be minted only by the stash contract, and transfered by the reward pool.
+ *      It represents a token that can be minted only by the stash contract, and transfered by the reward pool.
+ *      It wraps ERC20 tokens added as extra rewards.
+ *      Given the restrictions explained above, do not interact directly with this contract.
  */
 contract StashToken is ReentrancyGuardUpgradeable {
     using SafeERC20 for IERC20;
@@ -25,9 +27,12 @@ contract StashToken is ReentrancyGuardUpgradeable {
     uint256 public constant MAX_TOTAL_SUPPLY = 1e38;
 
     // State variables
+    /// @notice The ExtraRewardStashV3 address.
     address public immutable stash;
     address public operator;
+    /// @notice The VirtualBalanceRewardPool address.    
     address public rewardPool;
+    /// @notice The actual ERC20 reward token address.
     address public baseToken;
     bool public isValid;
     bool public isImplementation;
