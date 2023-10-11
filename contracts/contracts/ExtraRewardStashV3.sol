@@ -21,7 +21,7 @@ import "@openzeppelin/contracts-0.6/token/ERC20/SafeERC20.sol";
  *            transaction and then calls execute on the VoterProxy which executes this transaction on the Curve Gauge
  *          - v3.1: Support for arbitrary token rewards outside of gauge rewards add 
  *            reward hook to pull rewards during claims
- *          - v3.2: Move constuctor to init function for proxy creation
+ *          - v3.2: Move constuctor to init function for proxy creation, extra reward tokens are wrapped by StashToken.
  */
 contract ExtraRewardStashV3 {
     using SafeERC20 for IERC20;
@@ -157,8 +157,10 @@ contract ExtraRewardStashV3 {
 
     /**
      * @notice  Add a reward token to the token list so it can be claimed
-     * @dev     For each token that is added as a claimable reward a VirtualRewardsPool
-     *          is deployed to handle virtual distribution of tokens 
+     * @dev     For each token that is added as a claimable reward: 
+     *          - A StashToken non-ERC20 compliant contract is deployed as a wrapper of the reward token, the 
+                 StashToken.baseToken  is the actual ERC20 reward token.
+     *          - A VirtualRewardsPool is deployed to handle virtual distribution of tokens via the stash token.
      */
     function setToken(address _token) internal {
         TokenInfo storage t = tokenInfo[_token];
@@ -167,6 +169,7 @@ contract ExtraRewardStashV3 {
             //set token address
             t.token = _token;
 
+            // StashToken is not ERC20 compliant, the ERC20 is the StashToken.baseToken.
             StashToken stashToken = StashToken(Clones.clone(stashTokenImplementation));
 
             // we only want to add rewards that are not CRV
@@ -198,7 +201,8 @@ contract ExtraRewardStashV3 {
 
     /**
      * @notice  Distribute rewards
-     * @dev     Send all extra token rewards to the rewardContract VirtualRewardsPool
+     * @dev     Wraps and sends all extra token rewards to the rewardContract VirtualRewardsPool.
+     *          Token rewards are wrapped as a "baseToken" by StashToken, a non-compliant ERC20 contract.
      *          Called by Booster earmarkRewards
      */
     function processStash() external returns(bool){
