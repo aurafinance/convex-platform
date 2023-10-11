@@ -49,12 +49,15 @@ import "@openzeppelin/contracts-0.6/token/ERC20/SafeERC20.sol";
 
 /**
  * @title   BaseRewardPool
- * @author  Synthetix -> ConvexFinance
+ * @author  Synthetix -> ConvexFinance => AuraFinance
  * @notice  Unipool rewards contract that is re-deployed from rFactory for each staking pool.
  * @dev     Changes made here by ConvexFinance are to do with the delayed reward allocation. Curve is queued for
  *          rewards and the distribution only begins once the new rewards are sufficiently large, or the epoch
  *          has ended. Additionally, enables hooks for `extraRewards` that can be enabled at any point to
  *          distribute a child reward token (i.e. a secondary one from Curve, or a seperate one).
+ *
+ *          Any `extraRewards` is distributed by a VirtualBalanceRewardPool, which is linked to a StashToken,
+ *          the StashToken wraps the `extraReward` as a `baseToken`.
  */
 contract BaseRewardPool {
      using SafeMath for uint256;
@@ -123,7 +126,15 @@ contract BaseRewardPool {
         return extraRewards.length;
     }
 
-    function addExtraReward(address _reward) external returns(bool){
+    /**
+     * @notice  Add extra rewards to the pool.
+     * @dev Extra rewards are distributed by a VirtualRewardsPool's rewardToken,
+     *      The rewardToken is a non-ERC20 StashToken contract that wraps the extra reward.
+     *      The actual ERC20 extra reward can be retrivied as follows:
+     *      - VirtualBalanceRewardPool.rewardToken => StashToken.baseToken.
+     * @param _reward The VirtualRewardsPool address.
+     */
+    function addExtraReward(address _reward) external returns(bool){ 
         require(msg.sender == rewardManager, "!authorized");
         require(_reward != address(0),"!reward setting");
         
