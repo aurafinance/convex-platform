@@ -56,8 +56,12 @@ import "@openzeppelin/contracts-0.6/token/ERC20/SafeERC20.sol";
  *          has ended. Additionally, enables hooks for `extraRewards` that can be enabled at any point to
  *          distribute a child reward token (i.e. a secondary one from Curve, or a seperate one).
  *
+ *          **************************** ¡¡¡ WARNING !!! **************************** 
  *          Any `extraRewards` is distributed by a VirtualBalanceRewardPool, which is linked to a StashToken,
  *          the StashToken wraps the `extraReward` as a `baseToken`.
+ *          The StashToken is not ERC20 compliant, it is designed to interact only with VirtualBalanceRewardPool
+ *          and ExtraRewardStashV3. 
+ *          **************************** ¡¡¡ WARNING !!! **************************** 
  */
 contract BaseRewardPool {
      using SafeMath for uint256;

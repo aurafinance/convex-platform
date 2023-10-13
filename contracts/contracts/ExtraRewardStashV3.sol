@@ -159,8 +159,14 @@ contract ExtraRewardStashV3 {
      * @notice  Add a reward token to the token list so it can be claimed
      * @dev     For each token that is added as a claimable reward: 
      *          - A StashToken non-ERC20 compliant contract is deployed as a wrapper of the reward token, the 
-                 StashToken.baseToken  is the actual ERC20 reward token.
+     *           StashToken.baseToken  is the actual ERC20 reward token.
      *          - A VirtualRewardsPool is deployed to handle virtual distribution of tokens via the stash token.
+     *          **************************** ¡¡¡ WARNING !!! **************************** 
+     *          The StashToken is not ERC20 compliant, it is designed to interact only with VirtualBalanceRewardPool
+     *          and ExtraRewardStashV3. 
+     *          **************************** ¡¡¡ WARNING !!! ****************************
+      
+     * @param _token The ERC20 token to be added as extra reward, It will be wrapped by StashToken
      */
     function setToken(address _token) internal {
         TokenInfo storage t = tokenInfo[_token];
