@@ -14,11 +14,15 @@ interface IERC20Metadata {
 
 /**
  * @title StashToken
- * @notice StashToken is not ERC20 compliant. 
- * @dev StashToken is not ERC20 compliant. 
- *      It represents a token that can be minted only by the stash contract, and transfered by the reward pool.
- *      It wraps ERC20 tokens added as extra rewards.
- *      Given the restrictions explained above, do not interact directly with this contract.
+ * @notice The StashToken is not ERC20 compliant, it is designed to interact only with VirtualBalanceRewardPool
+ * and ExtraRewardStashV3. 
+ *
+ * @dev
+ *       **************************** ¡¡¡ WARNING !!! **************************** 
+ *       It represents a token that can be minted only by the stash contract, and transfered by the reward pool.
+ *       It wraps ERC20 tokens added as extra rewards.
+ *       Given the restrictions explained above, do not interact directly with this contract.
+ *       **************************** ¡¡¡ WARNING !!! **************************** 
  */
 contract StashToken is ReentrancyGuardUpgradeable {
     using SafeERC20 for IERC20;

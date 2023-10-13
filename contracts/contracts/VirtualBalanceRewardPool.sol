@@ -79,13 +79,15 @@ abstract contract VirtualBalanceWrapper {
  *          of 3Crv rewards
  *          
  *          AuraFinance
- *          - rewardToken: is the StashToken a non-ERC20 compliant contract, the ERC20 token
- *           is the StashToken.baseToken.
+ *          - rewardToken: ¡¡¡ WARNING !!! It is the StashToken a non-ERC20 compliant contract, 
+ *                         the ERC20 token is the StashToken.baseToken.
  */
 contract VirtualBalanceRewardPool is VirtualBalanceWrapper {
     using SafeERC20 for IERC20;
     
-    /// @notice The StashToken address, it is not an ERC20 it is a wrapper of the reward token.
+    /// @notice ¡¡¡ WARNING !!! The StashToken address, 
+    /// @dev    ¡¡¡ WARNING !!! It is not an ERC20 token, it is a wrapper of the reward token, only the
+    ///          VirtualBalanceRewardPool can transfer and unwrap it's base token.
     IERC20 public immutable rewardToken;
     uint256 public constant duration = 7 days;
 
