@@ -1,8 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.6.12;
 
-// original code
-// https://github.com/optionality/clone-factory/blob/master/contracts/CloneFactory.sol
+/**
+ * @title  ProxyFactory
+ * @author Optionality
+ * @notice Simply clones a smart contract at a given address
+ * @dev    Original code https://github.com/optionality/clone-factory/blob/master/contracts/CloneFactory.sol
+ */
 contract ProxyFactory {
     function clone(address target) external returns (address result) {
         bytes20 targetBytes = bytes20(target);

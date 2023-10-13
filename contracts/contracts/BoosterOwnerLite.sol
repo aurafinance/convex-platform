@@ -3,16 +3,12 @@ pragma solidity 0.6.12;
 
 
 interface IOwner {
-    //booster
+    //booster lite
     function setFactories(address _rfactory, address _sfactory, address _tfactory) external;
-    function setArbitrator(address _arb) external;
-    function setFeeInfo(address _feeToken, address _feeDistro) external;
-    function updateFeeInfo(address _feeToken, bool _active) external;
     function shutdownSystem() external;
     function isShutdown() external view returns(bool);
     function poolLength() external view returns(uint256);
     function poolInfo(uint256) external view returns(address,address,address,address,address,bool);
-    function setVoteDelegate(address _voteDelegate) external;
     function setFeeManager(address _feeM) external;
     function setOwner(address _owner) external;
 
@@ -26,21 +22,14 @@ interface IOwner {
 
     //stash factory
     function setImplementation(address _v1, address _v2, address _v3) external;
-
-    //vote extension
-    function revertControl() external;
 }
 
 // prettier-ignore
-interface IBoosterOwner {
+interface IBoosterOwnerLite {
     function transferOwnership(address _owner) external;
     function acceptOwnership() external;
     function setFactories(address _rfactory, address _sfactory, address _tfactory) external;
-    function setArbitrator(address _arb) external;
-    function setFeeInfo(address _feeToken, address _feeDistro) external;
-    function updateFeeInfo(address _feeToken, bool _active) external;
     function setFeeManager(address _feeM) external;
-    function setVoteDelegate(address _voteDelegate) external;
     function shutdownSystem() external;
     function queueForceShutdown() external;
     function forceShutdownSystem() external;
@@ -53,13 +42,14 @@ interface IBoosterOwner {
 }
 
 /**
- * @title   Booster
+ * @title   BoosterOwnerLite
  * @author  ConvexFinance
  * @notice  Immutable booster owner that requires all pools to be shutdown before shutting down the entire convex system
  * @dev     A timelock is required if forcing a shutdown if there is a bugged pool that can not be withdrawn from.
  *          Allow arbitrary calls to other contracts, but limit how calls are made to Booster.
+ *          A lite version of the original Booster for use on sidechains
  */
-contract BoosterOwner is IBoosterOwner{
+contract BoosterOwnerLite is IBoosterOwnerLite{
 
     address public immutable poolManager;
     address public immutable booster;
@@ -137,25 +127,11 @@ contract BoosterOwner is IBoosterOwner{
         IOwner(booster).setFactories(_rfactory, _sfactory, _tfactory);
     }
 
-    function setArbitrator(address _arb) external override onlyOwner{
-        IOwner(booster).setArbitrator(_arb);
-    }
-
-    function setFeeInfo(address _feeToken, address _feeDistro) external override onlyOwner{
-        IOwner(booster).setFeeInfo(_feeToken, _feeDistro);
-    }
-
-    function updateFeeInfo(address _feeToken, bool _active) external override onlyOwner{
-        IOwner(booster).updateFeeInfo(_feeToken, _active);
-    }
 
     function setFeeManager(address _feeM) external override onlyOwner{
         IOwner(booster).setFeeManager(_feeM);
     }
 
-    function setVoteDelegate(address _voteDelegate) external override onlyOwner{
-        IOwner(booster).setVoteDelegate(_voteDelegate);
-    }
 
     function shutdownSystem() external override onlyOwner{
         require(IOwner(poolManager).isShutdown(),"!poolMgrShutdown");

@@ -41,25 +41,40 @@ pragma solidity 0.6.12;
 
 import "./Interfaces.sol";
 import "./interfaces/MathUtil.sol";
-import '@openzeppelin/contracts/math/SafeMath.sol';
-import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
-import '@openzeppelin/contracts/utils/Address.sol';
-import '@openzeppelin/contracts/token/ERC20/SafeERC20.sol';
+import "@openzeppelin/contracts-0.6/math/SafeMath.sol";
+import "@openzeppelin/contracts-0.6/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts-0.6/utils/Address.sol";
+import "@openzeppelin/contracts-0.6/token/ERC20/SafeERC20.sol";
 
 
-
+/**
+ * @title   BaseRewardPool
+ * @author  Synthetix -> ConvexFinance => AuraFinance
+ * @notice  Unipool rewards contract that is re-deployed from rFactory for each staking pool.
+ * @dev     Changes made here by ConvexFinance are to do with the delayed reward allocation. Curve is queued for
+ *          rewards and the distribution only begins once the new rewards are sufficiently large, or the epoch
+ *          has ended. Additionally, enables hooks for `extraRewards` that can be enabled at any point to
+ *          distribute a child reward token (i.e. a secondary one from Curve, or a seperate one).
+ *
+ *          **************************** ¡¡¡ WARNING !!! **************************** 
+ *          Any `extraRewards` is distributed by a VirtualBalanceRewardPool, which is linked to a StashToken,
+ *          the StashToken wraps the `extraReward` as a `baseToken`.
+ *          The StashToken is not ERC20 compliant, it is designed to interact only with VirtualBalanceRewardPool
+ *          and ExtraRewardStashV3. 
+ *          **************************** ¡¡¡ WARNING !!! **************************** 
+ */
 contract BaseRewardPool {
      using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
-    IERC20 public rewardToken;
-    IERC20 public stakingToken;
+    IERC20 public immutable rewardToken;
+    IERC20 public immutable stakingToken;
     uint256 public constant duration = 7 days;
 
-    address public operator;
-    address public rewardManager;
+    address public immutable operator;
+    address public immutable rewardManager;
 
-    uint256 public pid;
+    uint256 public immutable pid;
     uint256 public periodFinish = 0;
     uint256 public rewardRate = 0;
     uint256 public lastUpdateTime;
@@ -71,7 +86,7 @@ contract BaseRewardPool {
     uint256 private _totalSupply;
     mapping(address => uint256) public userRewardPerTokenPaid;
     mapping(address => uint256) public rewards;
-    mapping(address => uint256) private _balances;
+    mapping(address => uint256) internal _balances;
 
     address[] public extraRewards;
 
@@ -79,7 +94,16 @@ contract BaseRewardPool {
     event Staked(address indexed user, uint256 amount);
     event Withdrawn(address indexed user, uint256 amount);
     event RewardPaid(address indexed user, uint256 reward);
+    event Transfer(address indexed from, address indexed to, uint256 value);
 
+    /**
+     * @dev This is called directly from RewardFactory
+     * @param pid_           Effectively the pool identifier - used in the Booster
+     * @param stakingToken_  Pool LP token
+     * @param rewardToken_   Crv
+     * @param operator_      Booster
+     * @param rewardManager_ RewardFactory
+     */
     constructor(
         uint256 pid_,
         address stakingToken_,
@@ -94,11 +118,11 @@ contract BaseRewardPool {
         rewardManager = rewardManager_;
     }
 
-    function totalSupply() public view returns (uint256) {
+    function totalSupply() public view virtual returns (uint256) {
         return _totalSupply;
     }
 
-    function balanceOf(address account) public view returns (uint256) {
+    function balanceOf(address account) public view virtual returns (uint256) {
         return _balances[account];
     }
 
@@ -106,10 +130,22 @@ contract BaseRewardPool {
         return extraRewards.length;
     }
 
-    function addExtraReward(address _reward) external returns(bool){
+    /**
+     * @notice  Add extra rewards to the pool.
+     * @dev Extra rewards are distributed by a VirtualRewardsPool's rewardToken,
+     *      The rewardToken is a non-ERC20 StashToken contract that wraps the extra reward.
+     *      The actual ERC20 extra reward can be retrivied as follows:
+     *      - VirtualBalanceRewardPool.rewardToken => StashToken.baseToken.
+     * @param _reward The VirtualRewardsPool address.
+     */
+    function addExtraReward(address _reward) external returns(bool){ 
         require(msg.sender == rewardManager, "!authorized");
         require(_reward != address(0),"!reward setting");
-
+        
+        if(extraRewards.length >= 12){
+            return false;
+        }
+        
         extraRewards.push(_reward);
         return true;
     }
@@ -155,24 +191,14 @@ contract BaseRewardPool {
     }
 
     function stake(uint256 _amount)
-        public
-        updateReward(msg.sender)
+        public 
         returns(bool)
     {
-        require(_amount > 0, 'RewardPool : Cannot stake 0');
-        
-        //also stake to linked rewards
-        for(uint i=0; i < extraRewards.length; i++){
-            IRewards(extraRewards[i]).stake(msg.sender, _amount);
-        }
-
-        _totalSupply = _totalSupply.add(_amount);
-        _balances[msg.sender] = _balances[msg.sender].add(_amount);
+        _processStake(_amount, msg.sender);
 
         stakingToken.safeTransferFrom(msg.sender, address(this), _amount);
         emit Staked(msg.sender, _amount);
 
-        
         return true;
     }
 
@@ -184,19 +210,9 @@ contract BaseRewardPool {
 
     function stakeFor(address _for, uint256 _amount)
         public
-        updateReward(_for)
         returns(bool)
     {
-        require(_amount > 0, 'RewardPool : Cannot stake 0');
-        
-        //also stake to linked rewards
-        for(uint i=0; i < extraRewards.length; i++){
-            IRewards(extraRewards[i]).stake(_for, _amount);
-        }
-
-        //give to _for
-        _totalSupply = _totalSupply.add(_amount);
-        _balances[_for] = _balances[_for].add(_amount);
+        _processStake(_amount, _for);
 
         //take away from sender
         stakingToken.safeTransferFrom(msg.sender, address(this), _amount);
@@ -205,6 +221,25 @@ contract BaseRewardPool {
         return true;
     }
 
+    /**
+     * @dev Generic internal staking function that basically does 3 things: update rewards based
+     *      on previous balance, trigger also on any child contracts, then update balances.
+     * @param _amount    Units to add to the users balance
+     * @param _receiver  Address of user who will receive the stake
+     */
+    function _processStake(uint256 _amount, address _receiver) internal updateReward(_receiver) {
+        require(_amount > 0, 'RewardPool : Cannot stake 0');
+        
+        //also stake to linked rewards
+        for(uint i=0; i < extraRewards.length; i++){
+            IRewards(extraRewards[i]).stake(_receiver, _amount);
+        }
+
+        _totalSupply = _totalSupply.add(_amount);
+        _balances[_receiver] = _balances[_receiver].add(_amount);
+
+        emit Transfer(address(0), _receiver, _amount);
+    }
 
     function withdraw(uint256 amount, bool claim)
         public
@@ -228,6 +263,8 @@ contract BaseRewardPool {
             getReward(msg.sender,true);
         }
 
+        emit Transfer(msg.sender, address(0), amount);
+
         return true;
     }
 
@@ -235,20 +272,8 @@ contract BaseRewardPool {
         withdraw(_balances[msg.sender],claim);
     }
 
-    function withdrawAndUnwrap(uint256 amount, bool claim) public updateReward(msg.sender) returns(bool){
-
-        //also withdraw from linked rewards
-        for(uint i=0; i < extraRewards.length; i++){
-            IRewards(extraRewards[i]).withdraw(msg.sender, amount);
-        }
-        
-        _totalSupply = _totalSupply.sub(amount);
-        _balances[msg.sender] = _balances[msg.sender].sub(amount);
-
-        //tell operator to withdraw from here directly to user
-        IDeposit(operator).withdrawTo(pid,amount,msg.sender);
-        emit Withdrawn(msg.sender, amount);
-
+    function withdrawAndUnwrap(uint256 amount, bool claim) public returns(bool){
+        _withdrawAndUnwrapTo(amount, msg.sender, msg.sender);
         //get rewards too
         if(claim){
             getReward(msg.sender,true);
@@ -256,10 +281,33 @@ contract BaseRewardPool {
         return true;
     }
 
+    function _withdrawAndUnwrapTo(uint256 amount, address from, address receiver) internal updateReward(from) returns(bool){
+        //also withdraw from linked rewards
+        for(uint i=0; i < extraRewards.length; i++){
+            IRewards(extraRewards[i]).withdraw(from, amount);
+        }
+        
+        _totalSupply = _totalSupply.sub(amount);
+        _balances[from] = _balances[from].sub(amount);
+
+        //tell operator to withdraw from here directly to user
+        IDeposit(operator).withdrawTo(pid,amount,receiver);
+        emit Withdrawn(from, amount);
+
+        emit Transfer(from, address(0), amount);
+
+        return true;
+    }
+
     function withdrawAllAndUnwrap(bool claim) external{
         withdrawAndUnwrap(_balances[msg.sender],claim);
     }
 
+    /**
+     * @dev Gives a staker their rewards, with the option of claiming extra rewards
+     * @param _account     Account for which to claim
+     * @param _claimExtras Get the child rewards too?
+     */
     function getReward(address _account, bool _claimExtras) public updateReward(_account) returns(bool){
         uint256 reward = earned(_account);
         if (reward > 0) {
@@ -278,16 +326,30 @@ contract BaseRewardPool {
         return true;
     }
 
+    /**
+     * @dev Called by a staker to get their allocated rewards
+     */
     function getReward() external returns(bool){
         getReward(msg.sender,true);
         return true;
     }
 
-    function donate(uint256 _amount) external returns(bool){
-        IERC20(rewardToken).safeTransferFrom(msg.sender, address(this), _amount);
-        queuedRewards = queuedRewards.add(_amount);
+    /**
+     * @dev Processes queued rewards in isolation, providing the period has finished.
+     *      This allows a cheaper way to trigger rewards on low value pools.
+     */
+    function processIdleRewards() external {
+        if (block.timestamp >= periodFinish && queuedRewards > 0) {
+            notifyRewardAmount(queuedRewards);
+            queuedRewards = 0;
+        }
     }
 
+    /**
+     * @dev Called by the booster to allocate new Crv rewards to this pool
+     *      Curve is queued for rewards and the distribution only begins once the new rewards are sufficiently
+     *      large, or the epoch has ended.
+     */
     function queueNewRewards(uint256 _rewards) external returns(bool){
         require(msg.sender == operator, "!authorized");
 

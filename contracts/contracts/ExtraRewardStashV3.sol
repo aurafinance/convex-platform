@@ -3,23 +3,32 @@ pragma solidity 0.6.12;
 
 import "./Interfaces.sol";
 import "./interfaces/IRewardHook.sol";
-import '@openzeppelin/contracts/math/SafeMath.sol';
-import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
-import '@openzeppelin/contracts/utils/Address.sol';
-import '@openzeppelin/contracts/token/ERC20/SafeERC20.sol';
+import "./StashToken.sol";
+import "@openzeppelin/contracts-0.6/math/SafeMath.sol";
+import "@openzeppelin/contracts-0.6/proxy/Clones.sol";
+import "@openzeppelin/contracts-0.6/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts-0.6/utils/Address.sol";
+import "@openzeppelin/contracts-0.6/token/ERC20/SafeERC20.sol";
 
-
-//Stash v3: support for curve gauge reward redirect
-//v3.1: support for arbitrary token rewards outside of gauge rewards
-//      add reward hook to pull rewards during claims
-//v3.2: move constuctor to init function for proxy creation
-
+/**
+ * @title   ExtraRewardStashV3
+ * @author  ConvexFinance -> AuraFinance
+ * @notice  ExtraRewardStash for pools added to the Booster to handle extra rewards
+ *          that aren't CRV that can be claimed from a gauge.
+ *          - v3.0: Support for curve gauge reward redirect
+ *            The Booster contract has a function called setGaugeRedirect. This function calls set_rewards_receiver
+ *            On the Curve Guage. This tells the Gauge where to send rewards. The Booster crafts the calldata for this
+ *            transaction and then calls execute on the VoterProxy which executes this transaction on the Curve Gauge
+ *          - v3.1: Support for arbitrary token rewards outside of gauge rewards add 
+ *            reward hook to pull rewards during claims
+ *          - v3.2: Move constuctor to init function for proxy creation, extra reward tokens are wrapped by StashToken.
+ */
 contract ExtraRewardStashV3 {
     using SafeERC20 for IERC20;
     using Address for address;
     using SafeMath for uint256;
 
-    address public constant crv = address(0xD533a949740bb3306d119CC777fa900bA034cd52);
+    address public immutable crv;
     uint256 private constant maxRewards = 8;
 
     uint256 public pid;
@@ -27,6 +36,7 @@ contract ExtraRewardStashV3 {
     address public staker;
     address public gauge;
     address public rewardFactory;
+    address public stashTokenImplementation;
    
     mapping(address => uint256) public historicalRewards;
     bool public hasRedirected;
@@ -35,6 +45,7 @@ contract ExtraRewardStashV3 {
     struct TokenInfo {
         address token;
         address rewardAddress;
+        address stashToken;
     }
 
     //use mapping+array so that we dont have to loop check each time setToken is called
@@ -43,10 +54,21 @@ contract ExtraRewardStashV3 {
 
     //address to call for reward pulls
     address public rewardHook;
-
-    constructor() public {
+  
+    /**
+     * @param _crv CRV token address
+     */
+    constructor(address _crv) public {
+      crv = _crv;
     }
 
+    /**
+     * @param _pid        Pool ID
+     * @param _operator   Operator (Booster)
+     * @param _staker     Staker (VoterProxy)
+     * @param _gauge      Gauge
+     * @param _rFactory   Reward factory
+     */
     function initialize(uint256 _pid, address _operator, address _staker, address _gauge, address _rFactory) external {
         require(gauge == address(0),"!init");
         pid = _pid;
@@ -54,6 +76,8 @@ contract ExtraRewardStashV3 {
         staker = _staker;
         gauge = _gauge;
         rewardFactory = _rFactory;
+
+        stashTokenImplementation = address(new StashToken(address(this)));
     }
 
     function getName() external pure returns (string memory) {
@@ -64,7 +88,16 @@ contract ExtraRewardStashV3 {
         return tokenList.length;
     }
 
-    //try claiming if there are reward tokens registered
+    /**
+     * @notice  Claim rewards from the gauge
+     * @dev     The Stash's claimRewards function calls claimRewards on the Booster contract
+     *          which calls claimRewards on the VoterProxy which calls claim_rewards on the gauge
+     *          If a RewardHook is set onRewardClaim is also called on that
+     *          Called by Booster earmarkRewards
+     *          Guage rewards are sent directly to this stash even though the Curve method claim_rewards
+     *          is being called by the VoterProxy. This is because Curves guages have the ability to redirect
+     *          rewards to somewhere other than msg.sender. This is setup in Booster setGaugeRedirect
+     */
     function claimRewards() external returns (bool) {
         require(msg.sender == operator, "!operator");
 
@@ -111,6 +144,8 @@ contract ExtraRewardStashV3 {
     function setExtraReward(address _token) external{
         //owner of booster can set extra rewards
         require(IDeposit(operator).owner() == msg.sender, "!owner");
+        require(tokenList.length < 4, "too many rewards");
+
         setToken(_token);
     }
 
@@ -120,26 +155,42 @@ contract ExtraRewardStashV3 {
         rewardHook = _hook;
     }
 
-
-    //replace a token on token list
+    /**
+     * @notice  Add a reward token to the token list so it can be claimed
+     * @dev     For each token that is added as a claimable reward: 
+     *          - A StashToken non-ERC20 compliant contract is deployed as a wrapper of the reward token, the 
+     *           StashToken.baseToken  is the actual ERC20 reward token.
+     *          - A VirtualRewardsPool is deployed to handle virtual distribution of tokens via the stash token.
+     *          **************************** ¡¡¡ WARNING !!! **************************** 
+     *          The StashToken is not ERC20 compliant, it is designed to interact only with VirtualBalanceRewardPool
+     *          and ExtraRewardStashV3. 
+     *          **************************** ¡¡¡ WARNING !!! ****************************
+      
+     * @param _token The ERC20 token to be added as extra reward, It will be wrapped by StashToken
+     */
     function setToken(address _token) internal {
         TokenInfo storage t = tokenInfo[_token];
 
-        if(t.token == address(0)){
+        if(t.token == address(0) && _token != crv){
             //set token address
             t.token = _token;
 
-            //check if crv
-            if(_token != crv){
-                //create new reward contract (for NON-crv tokens only)
-                (,,,address mainRewardContract,,) = IDeposit(operator).poolInfo(pid);
-                address rewardContract = IRewardFactory(rewardFactory).CreateTokenRewards(
-                    _token,
-                    mainRewardContract,
-                    address(this));
-                
-                t.rewardAddress = rewardContract;
-            }
+            // StashToken is not ERC20 compliant, the ERC20 is the StashToken.baseToken.
+            StashToken stashToken = StashToken(Clones.clone(stashTokenImplementation));
+
+            // we only want to add rewards that are not CRV
+            //create new reward contract (for NON-crv tokens only)
+            (,,,address mainRewardContract,,) = IDeposit(operator).poolInfo(pid);
+            address rewardContract = IRewardFactory(rewardFactory).CreateTokenRewards(
+                address(stashToken),
+                mainRewardContract,
+                address(this));
+
+            stashToken.init(operator, rewardContract, _token);
+            
+            t.rewardAddress = rewardContract;
+            t.stashToken = address(stashToken);
+
             //add token to list of known rewards
             tokenList.push(_token);
         }
@@ -154,7 +205,12 @@ contract ExtraRewardStashV3 {
         return true;
     }
 
-    //send all extra rewards to their reward contracts
+    /**
+     * @notice  Distribute rewards
+     * @dev     Wraps and sends all extra token rewards to the rewardContract VirtualRewardsPool.
+     *          Token rewards are wrapped as a "baseToken" by StashToken, a non-compliant ERC20 contract.
+     *          Called by Booster earmarkRewards
+     */
     function processStash() external returns(bool){
         require(msg.sender == operator, "!operator");
 
@@ -163,23 +219,22 @@ contract ExtraRewardStashV3 {
             TokenInfo storage t = tokenInfo[tokenList[i]];
             address token = t.token;
             if(token == address(0)) continue;
+            if(!StashToken(t.stashToken).isValid()) continue;
             
-            uint256 amount = IERC20(token).balanceOf(address(this));
+            uint256 amount = IERC20(token).balanceOf(address(this)); 
             if (amount > 0) {
                 historicalRewards[token] = historicalRewards[token].add(amount);
-                if(token == crv){
-                    //if crv, send back to booster to distribute
-                    IERC20(token).safeTransfer(operator, amount);
-                    continue;
-                }
-            	//add to reward contract
-            	address rewards = t.rewardAddress;
-            	if(rewards == address(0)) continue;
-            	IERC20(token).safeTransfer(rewards, amount);
-            	IRewards(rewards).queueNewRewards(amount);
+                //add to reward contract
+                address rewards = t.rewardAddress;
+                if(rewards == address(0)) continue;
+
+                address stashToken = t.stashToken;
+                IERC20(token).safeApprove(stashToken, 0);
+                IERC20(token).safeApprove(stashToken, amount);
+                StashToken(stashToken).mint(amount);
+                IRewards(rewards).queueNewRewards(amount);
             }
         }
         return true;
     }
-
 }
