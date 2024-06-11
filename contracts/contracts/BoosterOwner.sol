@@ -6,6 +6,8 @@ interface IOwner {
     //booster
     function setFactories(address _rfactory, address _sfactory, address _tfactory) external;
     function setArbitrator(address _arb) external;
+    function setFeeInfo(address _feeToken, address _feeDistro) external;
+    function updateFeeInfo(address _feeToken, bool _active) external;
     function shutdownSystem() external;
     function isShutdown() external view returns(bool);
     function poolLength() external view returns(uint256);
@@ -29,19 +31,40 @@ interface IOwner {
     function revertControl() external;
 }
 
-/*
-Immutable booster owner that requires all pools to be shutdown before shutting down the entire convex system
-A timelock is required if forcing a shutdown if there is a bugged pool that can not be withdrawn from
+// prettier-ignore
+interface IBoosterOwner {
+    function transferOwnership(address _owner) external;
+    function acceptOwnership() external;
+    function setFactories(address _rfactory, address _sfactory, address _tfactory) external;
+    function setArbitrator(address _arb) external;
+    function setFeeInfo(address _feeToken, address _feeDistro) external;
+    function updateFeeInfo(address _feeToken, bool _active) external;
+    function setFeeManager(address _feeM) external;
+    function setVoteDelegate(address _voteDelegate) external;
+    function shutdownSystem() external;
+    function queueForceShutdown() external;
+    function forceShutdownSystem() external;
+    function execute( address _to, uint256 _value, bytes calldata _data) external returns (bool, bytes memory);
+    function setRescueTokenDistribution(address _distributor, address _rewardDeposit, address _treasury) external;
+    function setRescueTokenReward(address _token, uint256 _option) external;
+    function setStashExtraReward(address _stash, address _token) external;
+    function setStashRewardHook(address _stash, address _hook) external;
+    function setStashFactoryImplementation(address _v1, address _v2, address _v3) external;
+}
 
-Allow arbitrary calls to other contracts, but limit how calls are made to Booster
+/**
+ * @title   Booster
+ * @author  ConvexFinance
+ * @notice  Immutable booster owner that requires all pools to be shutdown before shutting down the entire convex system
+ * @dev     A timelock is required if forcing a shutdown if there is a bugged pool that can not be withdrawn from.
+ *          Allow arbitrary calls to other contracts, but limit how calls are made to Booster.
+ */
+contract BoosterOwner is IBoosterOwner{
 
-*/
-contract BoosterOwner{
-
-    address public constant booster = address(0xF403C135812408BFbE8713b5A23a04b3D48AAE31);
-    address public constant stashFactory = address(0x884da067B66677e72530df91eabb6e3CE69c2bE4);
-    address public constant rescueStash = address(0x01140351069af98416cC08b16424b9E765436531);
     address public immutable poolManager;
+    address public immutable booster;
+    address public immutable stashFactory;
+    address public immutable rescueStash;
     address public owner;
     address public pendingowner;
     bool public isSealed;
@@ -57,10 +80,27 @@ contract BoosterOwner{
     event AcceptedOwnership(address newOwner);
     event OwnershipSealed();
 
-    constructor(address _poolManager) public {
-        //default to multisig
-        owner = address(0xa3C5A1e09150B75ff251c1a7815A07182c3de2FB);
+    /**
+     * @param _owner         Owner (e.g. CVX multisig)
+     * @param _poolManager   PoolManager (e.g. PoolManagerSecondaryProxy or 0xD20904e5916113D11414F083229e9C8C6F91D1e1)
+     * @param _booster       The booster (e.g. 0xF403C135812408BFbE8713b5A23a04b3D48AAE31)
+     * @param _stashFactory  Creates stashes (e.g. 0x884da067B66677e72530df91eabb6e3CE69c2bE4)
+     * @param _rescueStash   Rescues tokens for subsequent vlCVX redistribution (e.g. 0x01140351069af98416cC08b16424b9E765436531)
+     */
+    constructor(
+        address _owner,
+        address _poolManager,
+        address _booster,
+        address _stashFactory,
+        address _rescueStash,
+        bool _seal
+    ) public {
+        owner = _owner;
         poolManager = _poolManager;
+        booster = _booster;
+        stashFactory = _stashFactory;
+        rescueStash = _rescueStash;
+        isSealed = _seal;
     }
 
     modifier onlyOwner() {
@@ -68,12 +108,12 @@ contract BoosterOwner{
         _;
     }
 
-    function transferOwnership(address _owner) external onlyOwner{
+    function transferOwnership(address _owner) external override onlyOwner{
         pendingowner = _owner;
         emit TransferOwnership(_owner);
     }
 
-    function acceptOwnership() external {
+    function acceptOwnership() external override {
         require(pendingowner == msg.sender, "!pendingowner");
         owner = pendingowner;
         pendingowner = address(0);
@@ -93,23 +133,31 @@ contract BoosterOwner{
         IOwner(booster).setOwner(owner);
     }
 
-    function setFactories(address _rfactory, address _sfactory, address _tfactory) external onlyOwner{
+    function setFactories(address _rfactory, address _sfactory, address _tfactory) external override onlyOwner{
         IOwner(booster).setFactories(_rfactory, _sfactory, _tfactory);
     }
 
-    function setArbitrator(address _arb) external onlyOwner{
+    function setArbitrator(address _arb) external override onlyOwner{
         IOwner(booster).setArbitrator(_arb);
     }
 
-    function setFeeManager(address _feeM) external onlyOwner{
+    function setFeeInfo(address _feeToken, address _feeDistro) external override onlyOwner{
+        IOwner(booster).setFeeInfo(_feeToken, _feeDistro);
+    }
+
+    function updateFeeInfo(address _feeToken, bool _active) external override onlyOwner{
+        IOwner(booster).updateFeeInfo(_feeToken, _active);
+    }
+
+    function setFeeManager(address _feeM) external override onlyOwner{
         IOwner(booster).setFeeManager(_feeM);
     }
 
-    function setVoteDelegate(address _voteDelegate) external onlyOwner{
+    function setVoteDelegate(address _voteDelegate) external override onlyOwner{
         IOwner(booster).setVoteDelegate(_voteDelegate);
     }
 
-    function shutdownSystem() external onlyOwner{
+    function shutdownSystem() external override onlyOwner{
         require(IOwner(poolManager).isShutdown(),"!poolMgrShutdown");
 
         //check that all pools are already shutdown
@@ -128,7 +176,7 @@ contract BoosterOwner{
     //queue a forced shutdown that does not require pools to already be shutdown
     //this should only be needed if a pool is broken and withdrawAll() does not
     //correctly return enough lp tokens
-    function queueForceShutdown() external onlyOwner{
+    function queueForceShutdown() external override onlyOwner{
         require(IOwner(poolManager).isShutdown(),"!poolMgrShutdown");
         require(!isForceTimerStarted, "already started");
     
@@ -139,7 +187,7 @@ contract BoosterOwner{
     }
 
     //force shutdown the system after timer has expired
-    function forceShutdownSystem() external onlyOwner{
+    function forceShutdownSystem() external override onlyOwner{
         require(isForceTimerStarted, "!timer start");
         require(block.timestamp > forceTimestamp, "!timer finish");
 
@@ -154,7 +202,7 @@ contract BoosterOwner{
         address _to,
         uint256 _value,
         bytes calldata _data
-    ) external onlyOwner returns (bool, bytes memory) {
+    ) external override onlyOwner returns (bool, bytes memory) {
         require(_to != booster, "!invalid target");
 
         (bool success, bytes memory result) = _to.call{value:_value}(_data);
@@ -166,27 +214,27 @@ contract BoosterOwner{
     // --- Helper functions for other systems, could also just use execute() ---
 
     //TokenRescue setDistribution
-    function setRescueTokenDistribution(address _distributor, address _rewardDeposit, address _treasury) external onlyOwner{
+    function setRescueTokenDistribution(address _distributor, address _rewardDeposit, address _treasury) external override onlyOwner{
         IOwner(rescueStash).setDistribution(_distributor, _rewardDeposit, _treasury);
     }
 
     //TokenRescue setExtraReward
-    function setRescueTokenReward(address _token, uint256 _option) external onlyOwner{
+    function setRescueTokenReward(address _token, uint256 _option) external override onlyOwner{
         IOwner(rescueStash).setExtraReward(_token, _option);
     }
 
     //stash v3 - set extra reward
-    function setStashExtraReward(address _stash, address _token) external onlyOwner{
+    function setStashExtraReward(address _stash, address _token) external override onlyOwner{
         IOwner(_stash).setExtraReward(_token);
     }
 
     //stash v3 - set reward hook
-    function setStashRewardHook(address _stash, address _hook) external onlyOwner{
+    function setStashRewardHook(address _stash, address _hook) external override onlyOwner{
         IOwner(_stash).setRewardHook(_hook);
     }
 
     //stash factory - set implementation
-    function setStashFactoryImplementation(address _v1, address _v2, address _v3) external onlyOwner{
+    function setStashFactoryImplementation(address _v1, address _v2, address _v3) external override onlyOwner{
         IOwner(stashFactory).setImplementation(_v1, _v2, _v3);
     }
 }

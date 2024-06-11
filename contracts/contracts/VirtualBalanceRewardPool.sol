@@ -41,17 +41,21 @@ pragma solidity 0.6.12;
 
 import "./Interfaces.sol";
 import "./interfaces/MathUtil.sol";
-import '@openzeppelin/contracts/math/SafeMath.sol';
-import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
-import '@openzeppelin/contracts/utils/Address.sol';
-import '@openzeppelin/contracts/token/ERC20/SafeERC20.sol';
+import "@openzeppelin/contracts-0.6/math/SafeMath.sol";
+import "@openzeppelin/contracts-0.6/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts-0.6/utils/Address.sol";
+import "@openzeppelin/contracts-0.6/token/ERC20/SafeERC20.sol";
 
 
-contract VirtualBalanceWrapper {
+abstract contract VirtualBalanceWrapper {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
-    IDeposit public deposits;
+    IDeposit public immutable deposits;
+
+    constructor(address deposit_) internal {
+        deposits = IDeposit(deposit_);
+    }
 
     function totalSupply() public view returns (uint256) {
         return deposits.totalSupply();
@@ -62,13 +66,32 @@ contract VirtualBalanceWrapper {
     }
 }
 
+/**
+ * @title   VirtualBalanceRewardPool
+ * @author  ConvexFinance => AuraFinance
+ * @notice  Reward pool used for ExtraRewards in Booster lockFees (3crv) and
+ *          Extra reward stashes
+ * @dev     The rewards are sent to this contract for distribution to stakers. This
+ *          contract does not hold any of the staking tokens it just maintains a virtual
+ *          balance of what a user has staked in the staking pool (BaseRewardPool).
+ *          For example the Booster sends veCRV fees (3Crv) to a VirtualBalanceRewardPool
+ *          which tracks the virtual balance of cxvCRV stakers and distributes their share
+ *          of 3Crv rewards
+ *          
+ *          AuraFinance
+ *          - rewardToken: ¡¡¡ WARNING !!! It is the StashToken a non-ERC20 compliant contract, 
+ *                         the ERC20 token is the StashToken.baseToken.
+ */
 contract VirtualBalanceRewardPool is VirtualBalanceWrapper {
     using SafeERC20 for IERC20;
     
-    IERC20 public rewardToken;
+    /// @notice ¡¡¡ WARNING !!! The StashToken address, 
+    /// @dev    ¡¡¡ WARNING !!! It is not an ERC20 token, it is a wrapper of the reward token, only the
+    ///          VirtualBalanceRewardPool can transfer and unwrap it's base token.
+    IERC20 public immutable rewardToken;
     uint256 public constant duration = 7 days;
 
-    address public operator;
+    address public immutable operator;
 
     uint256 public periodFinish = 0;
     uint256 public rewardRate = 0;
@@ -77,26 +100,34 @@ contract VirtualBalanceRewardPool is VirtualBalanceWrapper {
     uint256 public queuedRewards = 0;
     uint256 public currentRewards = 0;
     uint256 public historicalRewards = 0;
-    uint256 public newRewardRatio = 830;
+    uint256 public constant newRewardRatio = 830;
     mapping(address => uint256) public userRewardPerTokenPaid;
     mapping(address => uint256) public rewards;
+    mapping(uint256 => uint256) public epochRewards;
 
     event RewardAdded(uint256 reward);
     event Staked(address indexed user, uint256 amount);
     event Withdrawn(address indexed user, uint256 amount);
     event RewardPaid(address indexed user, uint256 reward);
 
+    /**
+     * @param deposit_  Parent deposit pool e.g cvxCRV staking in BaseRewardPool
+     * @param reward_   The Stashtoken contract wrapping the reward token e.g 3Crv
+     * @param op_       Operator contract (Booster)
+     */
     constructor(
         address deposit_,
         address reward_,
         address op_
-    ) public {
-        deposits = IDeposit(deposit_);
+    ) public VirtualBalanceWrapper(deposit_) {
         rewardToken = IERC20(reward_);
         operator = op_;
     }
 
 
+    /**
+     * @notice Update rewards earned by this account
+     */
     modifier updateReward(address account) {
         rewardPerTokenStored = rewardPerToken();
         lastUpdateTime = lastTimeRewardApplicable();
@@ -133,7 +164,12 @@ contract VirtualBalanceRewardPool is VirtualBalanceWrapper {
                 .add(rewards[account]);
     }
 
-    //update reward, emit, call linked reward's stake
+    /**
+     * @notice  Update reward, emit, call linked reward's stake
+     * @dev     Callable by the deposits address which is the BaseRewardPool
+     *          this updates the virtual balance of this user as this contract doesn't
+     *          actually hold any staked tokens it just diributes reward tokens
+     */
     function stake(address _account, uint256 amount)
         external
         updateReward(_account)
@@ -143,6 +179,10 @@ contract VirtualBalanceRewardPool is VirtualBalanceWrapper {
         emit Staked(_account, amount);
     }
 
+    /**
+     * @notice  Withdraw stake and update reward, emit, call linked reward's stake
+     * @dev     See stake
+     */
     function withdraw(address _account, uint256 amount)
         public
         updateReward(_account)
@@ -153,6 +193,13 @@ contract VirtualBalanceRewardPool is VirtualBalanceWrapper {
         emit Withdrawn(_account, amount);
     }
 
+    /**
+     * @notice  Get rewards for this account
+     * @dev     This can be called directly but it is usually called by the
+     *          BaseRewardPool getReward when the BaseRewardPool loops through
+     *          it's extraRewards array calling getReward on all of them.
+     *          It transfers the StashToken.baseToken to the account.
+     */
     function getReward(address _account) public updateReward(_account){
         uint256 reward = earned(_account);
         if (reward > 0) {
@@ -165,14 +212,24 @@ contract VirtualBalanceRewardPool is VirtualBalanceWrapper {
     function getReward() external{
         getReward(msg.sender);
     }
-
-    function donate(uint256 _amount) external returns(bool){
-        IERC20(rewardToken).safeTransferFrom(msg.sender, address(this), _amount);
-        queuedRewards = queuedRewards.add(_amount);
+    /**
+     * @dev Processes queued rewards in isolation, providing the period has finished.
+     *      This allows a cheaper way to trigger rewards on low value pools.
+     */
+    function processIdleRewards() external {
+        if (block.timestamp >= periodFinish && queuedRewards > 0) {
+            notifyRewardAmount(queuedRewards);
+            queuedRewards = 0;
+        }
     }
-
     function queueNewRewards(uint256 _rewards) external{
         require(msg.sender == operator, "!authorized");
+
+        uint256 epoch = block.timestamp.div(duration);
+        epochRewards[epoch] = epochRewards[epoch].add(_rewards);
+        if(epochRewards[epoch] > 1e31) {
+          return;
+        }
 
         _rewards = _rewards.add(queuedRewards);
 

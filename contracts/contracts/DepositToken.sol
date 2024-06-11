@@ -2,13 +2,18 @@
 pragma solidity 0.6.12;
 
 import "./Interfaces.sol";
-import '@openzeppelin/contracts/math/SafeMath.sol';
-import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
-import '@openzeppelin/contracts/utils/Address.sol';
-import '@openzeppelin/contracts/token/ERC20/SafeERC20.sol';
-import '@openzeppelin/contracts/token/ERC20/ERC20.sol';
+import "@openzeppelin/contracts-0.6/math/SafeMath.sol";
+import "@openzeppelin/contracts-0.6/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts-0.6/utils/Address.sol";
+import "@openzeppelin/contracts-0.6/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts-0.6/token/ERC20/ERC20.sol";
 
 
+/**
+ * @title   DepositToken
+ * @author  ConvexFinance
+ * @notice  Simply creates a token that can be minted and burned from the operator
+ */
 contract DepositToken is ERC20 {
     using SafeERC20 for IERC20;
     using Address for address;
@@ -16,13 +21,24 @@ contract DepositToken is ERC20 {
 
     address public operator;
 
-    constructor(address _operator, address _lptoken)
+    /**
+     * @param _operator         Booster
+     * @param _lptoken          Underlying LP token for deposits
+     * @param _namePostfix      Postfixes lpToken name
+     * @param _symbolPrefix     Prefixed lpToken symbol
+     */
+    constructor(
+        address _operator,
+        address _lptoken,
+        string memory _namePostfix,
+        string memory _symbolPrefix
+    )
         public
         ERC20(
              string(
-                abi.encodePacked(ERC20(_lptoken).name()," Convex Deposit")
+                abi.encodePacked(ERC20(_lptoken).name(), _namePostfix)
             ),
-            string(abi.encodePacked("cvx", ERC20(_lptoken).symbol()))
+            string(abi.encodePacked(_symbolPrefix, ERC20(_lptoken).symbol()))
         )
     {
         operator =  _operator;
