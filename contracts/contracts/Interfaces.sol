@@ -151,3 +151,17 @@ interface IVestedEscrow{
 interface IRewardDeposit {
     function addReward(address, uint256) external;
 }
+
+interface IBoosterFees {
+    function setFees(uint256 _lockFees, uint256 _stakerFees, uint256 _callerFees, uint256 _platform) external;
+    function setTreasury(address _treasury) external;
+    function setBridgeDelegate(address _bridgeDelegate) external;
+    function setRewardMultiplier(address _rewardContract, uint256 multiplier) external;
+}
+interface IPoolManager{
+    function setOperator(address _operator)external;
+    function setProtectPool(bool _protectAddPool)external;
+    function addPool(address _gauge) external returns(bool);
+    function shutdownPool(uint256 _pid) external returns(bool);
+    function shutdownSystem() external;
+}
